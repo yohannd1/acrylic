@@ -16,14 +16,30 @@
       :indent ,indent-str
       }))
 
-(defn parse
-  ```
-  Parse the acrylic text document in question.
-  ```
-  [text]
-  (def p (make-peg {:indent 2}))
-  (:match p text)
-  )
+(def- header-peg
+  (peg/compile
+    ~{:main (* (any :header)
+               (/ (<- :tail) ,|['tail $]))
+      :header (<- (* "%:" :identifier (some :s) (any (if-not "\n" 1)) (some "\n")))
+      :tail (any 1)
+      :identifier (some (if-not (set "@%:") :S))
+
+    }))
+
+(defn- front [arr]
+  (let [len (length arr)]
+    (array/slice arr 0 (dec len))))
+
+(defn parse [str]
+  (def body-peg (make-peg {:indent 2}))
+
+  # TODO: extract key-value pairs out of header
+  (def header-and-body (:match header-peg str))
+
+  {:header (front header-and-body)
+   :body (let [[_ body-str] (last header-and-body)]
+           (:match body-peg body-str))
+   })
 
 (defn to-html [ast]
   (def buf @"")

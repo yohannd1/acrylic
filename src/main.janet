@@ -19,10 +19,10 @@
   (def contents (file-get-contents path))
   (pp contents)
 
-  (def ast (acrylic/parse contents))
-  (pp ast)
+  (def result (acrylic/parse contents))
+  (pp result)
 
-  (def html (acrylic/to-html ast))
+  (def html (acrylic/to-html (in result :body)))
   (pp html)
   )
 
