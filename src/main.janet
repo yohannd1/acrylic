@@ -11,10 +11,15 @@
   # TODO: get indent option (default=2, and can be tab if chosen)
   # TODO: parse the rest of the document, with `indent` being the indent unit
   # TODO: analyze the lines and group figure out the tree, based off indentation
+  # TODO: tests for this. would be hella useful.
   # TODO: implement bold, italic and code (plain text only)
   # TODO: implement %tags
   # TODO: implement @functions()
-  # TODO: tests for this. would be hella useful.
+  # TODO: math support via ${}
+  # TODO: implement $: syntax
+  # TODO: implement $$: syntax
+  # TODO: option "inherit" - inherit settings such as "indentation" and libraries(?? idk) on the header
+  # TODO: implement @(raw-function-call) (BUT ONLY IF I FIGURE OUT SANDBOXING!!!!!!!)
 
   (def contents (file-get-contents path))
   (pp contents)
@@ -25,6 +30,3 @@
   (def html (acrylic/to-html (in result :body)))
   (pp html)
   )
-
-# TODO: option "inherit" - inherit settings such as "indentation" and libraries(?? idk) on the header
-# TODO: implement @(raw-function-call) (BUT ONLY IF I FIGURE OUT SANDBOXING!!!!!!!)
