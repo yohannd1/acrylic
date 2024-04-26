@@ -23,8 +23,7 @@
       :header (<- (* "%:" :identifier (some :s) (any (if-not "\n" 1)) (some "\n")))
       :tail (any 1)
       :identifier (some (if-not (set "@%:") :S))
-
-    }))
+      }))
 
 (defn- front [arr]
   (let [len (length arr)]
