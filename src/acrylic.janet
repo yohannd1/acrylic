@@ -1,3 +1,5 @@
+# TODO: HTML escaping
+
 (defn make-peg [options]
   (def opt-indent (-> options (in :indent 2)))
   (def indent-str
@@ -6,12 +8,30 @@
       (= opt-indent :tab) "\t"
       (error (string "Unknown value for indent option: " opt-indent))))
 
+  (defn process-latex-math-inline [& args]
+    [:latex-math-inline (string/join args)])
+
+  (defn named-capture [name]
+    (defn callback [& args] [name ;args])
+    callback)
+
   (peg/compile
     ~{:main (* (some (+ :line-spaced :line-normal)))
+      :line-spaced (* (/ :line-content ,(named-capture :line-spaced)) (at-least 2 "\n"))
+      :line-normal (* (/ :line-content ,(named-capture :line-normal)) "\n")
 
-      :line-spaced (* (/ :line-content ,|[:line-spaced $]) (at-least 2 "\n"))
-      :line-normal (* (/ :line-content ,|[:line-normal $]) "\n")
-      :line-content (<- (any (if-not "\n" 1)))
+      :line-content (any (+ (/ (some " ") ,|" ")
+                            :line-content-latex-inline
+                            :line-content-word
+                            ))
+      :line-content-word (<- (any (if-not (set " \n") 1)))
+      :line-content-latex-inline (/ (* "${" :latex-math-block "}") ,process-latex-math-inline)
+
+      :latex-math-block (any (+ :latex-math-nest
+                                :latex-math-text))
+      :latex-bracket (set "{}")
+      :latex-math-text (<- (any (+ "\\{" "\\}" (if-not :latex-bracket 1))))
+      :latex-math-nest (* (<- "{") :latex-math-block (<- "}"))
 
       :indent ,indent-str
       }))
@@ -42,12 +62,34 @@
 
 (defn to-html [ast]
   (def buf @"")
+  (defn ps [& args]
+    (loop [s :in args]
+      (buffer/push-string buf s)))
+
+  (defn process-unit [node]
+    (match node
+      [:latex-math-inline text]
+      (ps "LATEX{<code>" text "}")
+
+      other
+      (ps other)
+      )
+    )
 
   (each node ast
     (match node
-      [:line-spaced text] (buffer/push-string buf (string/format "%s<br/><br/>" text))
-      [:line-normal text] (buffer/push-string buf (string/format "%s<br/>" text))
-      _ (error "TODO")
+      [:line-spaced & contents]
+      (do
+        (loop [c :in contents] (process-unit c))
+        (ps "<br/><br/>"))
+
+      [:line-normal & contents]
+      (do
+        (loop [c :in contents] (process-unit c))
+        (ps "<br/>"))
+
+      other
+      (error (string/format "Unknown form: %j" other))
     ))
 
   buf)
