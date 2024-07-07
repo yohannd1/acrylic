@@ -1,5 +1,3 @@
-# TODO: HTML escaping
-
 (defn make-peg [options]
   (def opt-indent (-> options (in :indent 2)))
   (def indent-str

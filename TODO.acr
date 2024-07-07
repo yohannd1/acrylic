@@ -1,0 +1,56 @@
+Very meta to have the to-do list in the format itself hehe
+
+(x) Inline LaTeX math support (`${}`)
+
+( ) Make a proper HTML export module
+  ( ) Escape sequences (I made code for that on my website - take it from over there)
+  ( ) Don't use `<br/>` for line separation. Instead use `<p>` and two classes for the two kinds of line spacing.
+
+( ) Parse header
+
+( ) Get indent option (default=2, and can be tab if chosen)
+
+( ) Parse the rest of the document, with `indent` being the indent unit - analyze the lines and group figure out the tree, based off indentation
+
+( ) Actually do something with the LaTeX
+
+( ) automated tests. would be hella useful.
+
+( ) implement inline bold, italic and code
+
+( ) implement %tags
+
+( ) implement $: syntax
+
+( ) implement $$: syntax
+
+( ) Implement folding via `%-fold`
+
+( ) option "inherit" - inherit settings such as "indentation" and libraries(?? idk) on the header
+
+( ) implement @functions{}
+
+( ) tests for this. would be hella useful.
+
+( ) Keywords arguments as [] and positional arguments as {}. Would make things easier for me. Scribble-based.
+
+( ) raw args?
+  @code:
+  @code[lang (Bom dia)]#{{
+    this is raw but left-trimmed data
+  }}
+  \@end
+  @end
+
+( ) multiline arg composition
+  @code:
+  @code->
+    [lang (Bom dia)]
+    {This is arg 1}
+    {This is arg 2!!}
+  \@end
+  @end
+
+( ) Implement folding via `@fold`
+
+( ) implement @(raw-function-call) (BUT ONLY IF I FIGURE OUT SANDBOXING!!!!!!!)
