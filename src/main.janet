@@ -3,8 +3,6 @@
 (import ../lib/parser)
 (import ../lib/html)
 
-(import ./acrylic)
-
 (defn file-get-contents [path]
   (with [fd (file/open path :rn)]
     (:read fd math/int32-max)))

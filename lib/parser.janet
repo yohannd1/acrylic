@@ -36,7 +36,7 @@
 
 (def- header-peg
   (peg/compile
-    ~{:main (* (any :entry)
+    ~{:main (* (any :entry) (some "\n")
                (/ (<- :tail) ,|['tail $]))
       :entry (<- (* "%:" :identifier (some :s)
                     (any (if-not "\n" 1)) (at-most 1 "\n")))

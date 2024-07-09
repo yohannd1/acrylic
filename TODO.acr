@@ -3,16 +3,19 @@ Very meta to have the to-do list in the format itself hehe
 (x) Inline LaTeX math support (`${}`)
 
 ( ) Make a proper HTML export module
+  (x) Don't use `<br/>` for line separation. Instead use `<p>` and two classes for the two kinds of line spacing.
   ( ) Escape sequences (I made code for that on my website - take it from over there)
-  ( ) Don't use `<br/>` for line separation. Instead use `<p>` and two classes for the two kinds of line spacing.
 
 ( ) Parse header
+
+( ) Parse error handling (at least error out! for the love of god)
 
 ( ) Get indent option (default=2, and can be tab if chosen)
 
 ( ) Parse the rest of the document, with `indent` being the indent unit - analyze the lines and group figure out the tree, based off indentation
 
 ( ) Actually do something with the LaTeX
+  - Probably use KaTeX by default: https://www.youtube.com/watch?v=KET6T6HZD2w
 
 ( ) automated tests. would be hella useful.
 
