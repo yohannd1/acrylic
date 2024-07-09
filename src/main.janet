@@ -1,5 +1,8 @@
 #!/usr/bin/env janet
 
+(import ../lib/parser)
+(import ../lib/html)
+
 (import ./acrylic)
 
 (defn file-get-contents [path]
@@ -11,11 +14,11 @@
   (pp contents)
   (print)
 
-  (def ast (acrylic/parse contents))
+  (def ast (parser/parse contents))
   (pp ast)
   (print)
 
-  (def html (acrylic/to-html (in ast :body)))
+  (def html (html/to-html (in ast :body) {}))
   (pp html)
   (print)
 

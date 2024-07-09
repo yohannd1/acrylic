@@ -1,4 +1,4 @@
-(defn make-peg [options]
+(defn- make-peg [options]
   (def opt-indent (-> options (in :indent 2)))
   (def indent-str
     (case
@@ -36,9 +36,10 @@
 
 (def- header-peg
   (peg/compile
-    ~{:main (* (any :header)
+    ~{:main (* (any :entry)
                (/ (<- :tail) ,|['tail $]))
-      :header (<- (* "%:" :identifier (some :s) (any (if-not "\n" 1)) (some "\n")))
+      :entry (<- (* "%:" :identifier (some :s)
+                    (any (if-not "\n" 1)) (at-most 1 "\n")))
       :tail (any 1)
       :identifier (some (if-not (set "@%:") :S))
       }))
@@ -47,47 +48,15 @@
   (let [len (length arr)]
     (array/slice arr 0 (dec len))))
 
-(defn parse [str]
+(defn parse
+  ```Parse the input string `str`, returning the AST with the parsed contents.```
+  [str]
+
   (def body-peg (make-peg {:indent 2}))
 
-  # TODO: extract key-value pairs out of header
   (def header-and-body (:match header-peg str))
 
   {:header (front header-and-body)
    :body (let [[_ body-str] (last header-and-body)]
            (:match body-peg body-str))
    })
-
-(defn to-html [ast]
-  (def buf @"")
-  (defn ps [& args]
-    (loop [s :in args]
-      (buffer/push-string buf s)))
-
-  (defn process-unit [node]
-    (match node
-      [:latex-math-inline text]
-      (ps "LATEX{<code>" text "}")
-
-      other
-      (ps other)
-      )
-    )
-
-  (each node ast
-    (match node
-      [:line-spaced & contents]
-      (do
-        (loop [c :in contents] (process-unit c))
-        (ps "<br/><br/>"))
-
-      [:line-normal & contents]
-      (do
-        (loop [c :in contents] (process-unit c))
-        (ps "<br/>"))
-
-      other
-      (error (string/format "Unknown form: %j" other))
-    ))
-
-  buf)
