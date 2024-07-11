@@ -1,9 +1,10 @@
 (defn- make-peg [options]
   (def opt-indent (-> options (in :indent 2)))
+
   (def indent-str
     (case
       (-> opt-indent (type) (= :number)) (string/repeat " " opt-indent)
-      (= opt-indent :tab) "\t"
+      (= opt-indent "tab") "\t"
       (error (string "Unknown value for indent option: " opt-indent))))
 
   (defn process-latex-math-inline [& args]
@@ -51,12 +52,17 @@
 
 (def- header-peg
   (peg/compile
-    ~{:main (* (any :entry) (some "\n")
-               (/ (<- :tail) ,|['tail $]))
-      :entry (<- (* "%:" :identifier (some :s)
-                    (any (if-not "\n" 1)) (at-most 1 "\n")))
-      :tail (any 1)
-      :identifier (some (if-not (set "@%:") :S))
+    ~{:main (* (any :entry) # a set of entries
+               (some "\n") # many whitespaces(?)
+               :body) # the rest of the document
+
+      :entry (/ (* "%:" :identifier (some :s) :not-newline "\n")
+                ,tuple)
+
+      :identifier (<- (some (if-not (set "@%:") :S)))
+      :not-newline (<- (any (if-not "\n" 1)))
+
+      :body (/ (<- (any 1)) ,|[:body $])
       }))
 
 (defn- front [arr]
@@ -67,11 +73,13 @@
   ```Parse the input string `str`, returning the AST with the parsed contents.```
   [str]
 
-  (def body-peg (make-peg {:indent 2}))
+  (def header-result (:match header-peg str))
+  (def options @{})
+  (loop [[key val] :in (front header-result)]
+    (set (options (keyword key)) val))
 
-  (def header-and-body (:match header-peg str))
+  (def body-peg (make-peg options))
+  (def [_ body-str] (last header-result))
 
-  {:header (front header-and-body)
-   :body (let [[_ body-str] (last header-and-body)]
-           (:match body-peg body-str))
-   })
+  {:header options
+   :ast (:match body-peg body-str)})

@@ -12,13 +12,13 @@
   (pp contents)
   (print)
 
-  (def ast (parser/parse contents))
-  (pp ast)
+  (def result (parser/parse contents))
+  (pp result)
   (print)
 
-  (def html (html/to-html (in ast :body) {}))
-  (pp html)
-  (print)
+  (def html (html/to-html result {}))
+  # (pp html)
+  # (print)
 
   (def output-file (file/open "out/output.html" :w))
   (:write output-file html)

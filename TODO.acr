@@ -10,7 +10,7 @@ Very meta to have the to-do list in the format itself hehe
 
 (x) implement `$$:` and `$:` syntax
 
-( ) Parse header
+(x) Parse header
 
 ( ) Get indent option (default=2, and can be tab if chosen)
 
@@ -49,7 +49,10 @@ Very meta to have the to-do list in the format itself hehe
   \@end
   @end
 
+( ) Implement folding via `@fold`
+
 ( ) multiline arg composition
+  - probably won't implement -- too much for this format
   @code:
   @code->
     [lang (Bom dia)]
@@ -57,7 +60,5 @@ Very meta to have the to-do list in the format itself hehe
     {This is arg 2!!}
   \@end
   @end
-
-( ) Implement folding via `@fold`
 
 ( ) implement @(raw-function-call) (BUT ONLY IF I FIGURE OUT SANDBOXING!!!!!!!)

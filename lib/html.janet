@@ -48,7 +48,9 @@
   Options:
     :css - the CSS stylesheet to be used, as CSS code. Vulnerable to HTML injection.
   ```
-  [ast opts]
+  [parse-result opts]
+
+  (def {:ast ast :header header} parse-result)
 
   (def css (-> opts (in :css) (or default-css)))
 
@@ -77,6 +79,9 @@
   (ps `</style>`)
   (ps `</head>`)
   (ps `<body>`)
+
+  (if-let [title (in header :title)]
+    (ps `<h1>` title `</h1>`))
 
   (each node ast
     (match node
