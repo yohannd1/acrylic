@@ -8,36 +8,34 @@ Very meta to have the to-do list in the format itself hehe
 
 (x) Parse "display math" (the one that's not inline - `$${}`)
 
-( ) KaTeX - automated download (maybe use npm? :sob:)
-
-( ) HTML - Escape sequences (I made code for that on my website - take it from over there)
+(x) implement `$$:` and `$:` syntax
 
 ( ) Parse header
-
-( ) Parse error handling (at least error out! for the love of god)
 
 ( ) Get indent option (default=2, and can be tab if chosen)
 
 ( ) Parse the rest of the document, with `indent` being the indent unit - analyze the lines and group figure out the tree, based off indentation
+
+( ) KaTeX - automated download (maybe use npm? :sob:)
+
+( ) HTML - Escape sequences (I made code for that on my website - take it from over there)
+
+( ) Parse error handling (at least error out! for the love of god)
 
 ( ) Actually do something with the LaTeX
   - Probably use KaTeX by default: https://www.youtube.com/watch?v=KET6T6HZD2w
 
 ( ) automated tests. would be hella useful.
 
+( ) implement to-dos
+
 ( ) implement inline bold, italic and code
 
-( ) implement %tags
-
-( ) implement $: syntax
-
-( ) implement $$: syntax
+( ) implement `%tags`
 
 ( ) Implement folding via `%-fold`
 
-( ) option "inherit" - inherit settings such as "indentation" and libraries(?? idk) on the header
-
-( ) implement @functions{}
+( ) implement `@functions{}`
 
 ( ) tests for this. would be hella useful.
 

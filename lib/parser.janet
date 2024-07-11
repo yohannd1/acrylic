@@ -18,18 +18,27 @@
 
   (peg/compile
     ~{:main (* (some (+ :line-latex :line-spaced :line-normal)))
+
       :line-spaced (* (/ :line-content ,(named-capture :line-spaced)) (at-least 2 "\n"))
       :line-normal (* (/ :line-content ,(named-capture :line-normal)) "\n")
-      :line-latex (/ (* "$${" :latex-math-block "}" (some "\n")) ,process-latex-math-line)
+      :line-latex (/ (* (+ (* "$$:" :not-newline)
+                           (* "$${" :latex-math-block "}")
+                           )
+                        (some "\n"))
+                     ,process-latex-math-line)
 
-      :line-content (any (+ (/ (some " ") ,|" ")
+      :whitespace (/ (some (set " \t")) ,|" ")
+      :line-content (any (+ :whitespace
                             :line-content-latex-inline
+                            :line-content-latex-inline-to-end
                             :line-content-word
                             ))
 
+      :not-newline (<- (any (if-not "\n" 1)))
 
       :line-content-word (<- (any (if-not (set " \n") 1)))
       :line-content-latex-inline (/ (* "${" :latex-math-block "}") ,process-latex-math-inline)
+      :line-content-latex-inline-to-end (/ (* "$:" :not-newline) ,process-latex-math-inline)
 
       :latex-math-block (any (+ :latex-math-nest
                                 :latex-math-text))

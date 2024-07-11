@@ -1,8 +1,14 @@
 (def- default-css
   ```
   body {}
-  p.line-normal {}
-  p.line-spaced {}
+  p.line-normal {
+    margin-top: 0em;
+    margin-bottom: 0.1em;
+  }
+  p.line-spaced {
+    margin-top: 0em;
+    margin-bottom: 1.5em;
+  }
   .katex-display.fleqn>.katex {
     padding-left: 0em;
   }

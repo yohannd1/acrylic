@@ -3,7 +3,9 @@
 
 First line
 
-$${S(n) = \sum_{i=0}^n n^2}
+$${ S(n) = \sum_{i=0}^n i^2 }
+
+$$: \int f(x) dx
 
 Second line
 
@@ -12,4 +14,6 @@ Second line
 mmyeah
 dshao
 
-This is simple inline math: ${x_2 + \sum_{i=0}^{\infty} a_n}
+This is simple inline math: ${ x_2 + \sum_{n=0}^{\infty} a_n }
+
+inline math 2: $: x^2
