@@ -59,7 +59,7 @@
 
       :whitespace (/ (some (set " \t")) ,|" ")
       :escaped (* "\\" (<- (if-not "\n" 1)))
-      :line-content-word (<- (any (if-not (set " \t_*`\\\n") 1)))
+      :line-content-word (<- (any (if-not (set " \t_*$`\\\n") 1)))
 
       :line-content-bold (/ (* "*" (<- (any (if-not (set "*\n") 1))) "*")
                             ,(named-capture :bold))
