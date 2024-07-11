@@ -20,6 +20,6 @@
   (pp html)
   (print)
 
-  (def output-file (file/open "output.html" :w))
+  (def output-file (file/open "out/output.html" :w))
   (:write output-file html)
   )

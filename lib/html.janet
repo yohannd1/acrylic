@@ -5,6 +5,34 @@
   p.line-spaced {}
   ```)
 
+(def- katex-header
+  ```
+  <link rel="stylesheet" href="katex.min.css"/>
+  <script src="katex.min.js" defer></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const macros = {};
+      const opts = {
+        throwOnError: false,
+        macros: macros,
+      };
+
+      for (let e of document.querySelectorAll(".katex-inline")) {
+        const text = e.innerText;
+        e.innerText = "";
+        katex.render(text, e, {displayMode: false, ...opts});
+      }
+
+      for (let e of document.querySelectorAll(".katex-display")) {
+        const text = e.innerText;
+        e.innerText = "";
+        katex.render(text, e, {displayMode: true, ...opts});
+      }
+    });
+  </script>
+  ```
+  )
+
 (defn to-html
   ```Analyze `ast` and return its HTML representation.
 
@@ -23,16 +51,18 @@
   (defn process-unit [node]
     (match node
       [:latex-math-inline text]
-      (ps "($) {<code>" text "</code>}")
+      (ps `<span class="katex-inline">` text "</span>")
 
       other
       (ps other)
       ))
 
+  (ps `<!DOCTYPE html>`)
   (ps `<html>`)
   (ps `<head>`)
   (ps `<meta charset="UTF-8"/>
        <meta name="viewport" content="width=device-width,initial-scale=1"/>`)
+  (ps katex-header)
   (ps `<style>`)
   (ps css)
   (ps `</style>`)
