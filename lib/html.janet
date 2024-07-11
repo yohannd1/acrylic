@@ -3,6 +3,9 @@
   body {}
   p.line-normal {}
   p.line-spaced {}
+  .katex-display.fleqn>.katex {
+    padding-left: 0em;
+  }
   ```)
 
 (def- katex-header
@@ -26,7 +29,7 @@
       for (let e of document.querySelectorAll(".katex-display")) {
         const text = e.innerText;
         e.innerText = "";
-        katex.render(text, e, {displayMode: true, ...opts});
+        katex.render(text, e, {displayMode: true, fleqn: true, ...opts});
       }
     });
   </script>
@@ -80,6 +83,12 @@
       [:line-normal & contents]
       (do
         (ps `<p class="line-normal">`)
+        (loop [c :in contents] (process-unit c))
+        (ps `</p>`))
+
+      [:line-latex & contents]
+      (do
+        (ps `<p class="line-normal katex-display">`)
         (loop [c :in contents] (process-unit c))
         (ps `</p>`))
 

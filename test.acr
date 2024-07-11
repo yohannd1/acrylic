@@ -3,6 +3,8 @@
 
 First line
 
+$${S(n) = \sum_{i=0}^n n^2}
+
 Second line
 
   Indented sub-line

@@ -9,19 +9,25 @@
   (defn process-latex-math-inline [& args]
     [:latex-math-inline (string/join args)])
 
+  (defn process-latex-math-line [& args]
+    [:line-latex (string/join args)])
+
   (defn named-capture [name]
     (defn callback [& args] [name ;args])
     callback)
 
   (peg/compile
-    ~{:main (* (some (+ :line-spaced :line-normal)))
+    ~{:main (* (some (+ :line-latex :line-spaced :line-normal)))
       :line-spaced (* (/ :line-content ,(named-capture :line-spaced)) (at-least 2 "\n"))
       :line-normal (* (/ :line-content ,(named-capture :line-normal)) "\n")
+      :line-latex (/ (* "$${" :latex-math-block "}" (some "\n")) ,process-latex-math-line)
 
       :line-content (any (+ (/ (some " ") ,|" ")
                             :line-content-latex-inline
                             :line-content-word
                             ))
+
+
       :line-content-word (<- (any (if-not (set " \n") 1)))
       :line-content-latex-inline (/ (* "${" :latex-math-block "}") ,process-latex-math-inline)
 

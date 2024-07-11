@@ -2,9 +2,15 @@ Very meta to have the to-do list in the format itself hehe
 
 (x) Inline LaTeX math support (`${}`)
 
-( ) Make a proper HTML export module
-  (x) Don't use `<br/>` for line separation. Instead use `<p>` and two classes for the two kinds of line spacing.
-  ( ) Escape sequences (I made code for that on my website - take it from over there)
+(x) HTML - Don't use `<br/>` for line separation. Instead use `<p>` and two classes for the two kinds of line spacing.
+
+(x) KaTeX - initial setup
+
+(x) Parse "display math" (the one that's not inline - `$${}`)
+
+( ) KaTeX - automated download (maybe use npm? :sob:)
+
+( ) HTML - Escape sequences (I made code for that on my website - take it from over there)
 
 ( ) Parse header
 
