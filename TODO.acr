@@ -12,9 +12,11 @@ Very meta to have the to-do list in the format itself hehe
 
 (x) Parse header
 
-( ) Get indent option (default=2, and can be tab if chosen)
+(x) Get indent option (default=2, and can be tab if chosen)
 
-( ) Parse the rest of the document, with `indent` being the indent unit - analyze the lines and group figure out the tree, based off indentation
+(x) implement inline *bold*, _italic_, *_bold-italic_* and `code`
+
+(x) Parse the rest of the document, with `indent` being the indent unit
 
 ( ) KaTeX - automated download (maybe use npm? :sob:)
 
@@ -29,15 +31,13 @@ Very meta to have the to-do list in the format itself hehe
 
 ( ) implement to-dos
 
-( ) implement inline bold, italic and code
+( ) cuter CSS
 
 ( ) implement `%tags`
 
 ( ) Implement folding via `%-fold`
 
 ( ) implement `@functions{}`
-
-( ) tests for this. would be hella useful.
 
 ( ) Keywords arguments as [] and positional arguments as {}. Would make things easier for me. Scribble-based.
 
@@ -62,3 +62,7 @@ Very meta to have the to-do list in the format itself hehe
   @end
 
 ( ) implement @(raw-function-call) (BUT ONLY IF I FIGURE OUT SANDBOXING!!!!!!!)
+
+( ) FSM parsing using C++, rust, dunno (probably faster and... honestly, easier to debug and maintain)
+
+( ) optional JS tools (searching for tags, TODOs and incomplete ttasks)

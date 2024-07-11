@@ -5,15 +5,28 @@ First line
 
 $${ S(n) = \sum_{i=0}^n i^2 }
 
-$$: \int f(x) dx
+$$: \int_a^b f(x) dx
+
+This is simple inline math: ${ x_2 + \sum_{n=0}^{\infty} a_n }
+
+inline math 2: $: x^2
+
+mmyeah
+dshao
+
+This is a backslash: \\
+
+This is *bold text*, and these are \*escaped asterisks\*.
+This is _italic text_, and these are \_escaped underscore\_.
+This is `inline code`, and these are \`escaped backticks\`.
 
 Second line
 
   Indented sub-line
 
-mmyeah
-dshao
+    Even more indented!
 
-This is simple inline math: ${ x_2 + \sum_{n=0}^{\infty} a_n }
+  Inline math in indented-subline: ${ \Delta x }
 
-inline math 2: $: x^2
+  And now display math:
+  $$: \int_a^b f(x) dx = \lim_{n \to \infty} \sum_{i=0}^n f(x_i) \Delta x, \Delta x = \frac {b-a} 2, x_i = \Delta x i

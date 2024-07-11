@@ -2,10 +2,15 @@
   (def opt-indent (-> options (in :indent 2)))
 
   (def indent-str
-    (case
-      (-> opt-indent (type) (= :number)) (string/repeat " " opt-indent)
-      (= opt-indent "tab") "\t"
-      (error (string "Unknown value for indent option: " opt-indent))))
+    (cond
+      (-> opt-indent (type) (= :number))
+      (string/repeat " " opt-indent)
+
+      (= opt-indent "tab")
+      "\t"
+
+      (-> (string/format "Unknown value for indent option: %j" opt-indent) (error))
+      ))
 
   (defn process-latex-math-inline [& args]
     [:latex-math-inline (string/join args)])
@@ -17,29 +22,57 @@
     (defn callback [& args] [name ;args])
     callback)
 
-  (peg/compile
-    ~{:main (* (some (+ :line-latex :line-spaced :line-normal)))
+  (defn process-indent [indent trailing-space]
+    # FIXME: trailing-space is not being detected. make it detect, and error out when it does happen
+    (def size
+      (cond
+        # for tabs
+        (= indent-str "\t") (length indent)
 
+        # for spaces
+        (-> (length indent) (/ (length indent-str)))
+        )
+      )
+    [:indent size])
+
+  (peg/compile
+    ~{:main (* (some (* :indent (+ :line-latex :line-spaced :line-normal))))
+
+      :indent (/ (* (<- (any ,indent-str)) (<- (any " \t"))) ,process-indent)
       :line-spaced (* (/ :line-content ,(named-capture :line-spaced)) (at-least 2 "\n"))
       :line-normal (* (/ :line-content ,(named-capture :line-normal)) "\n")
       :line-latex (/ (* (+ (* "$$:" :not-newline)
-                           (* "$${" :latex-math-block "}")
-                           )
+                           (* "$${" :latex-math-block "}"))
                         (some "\n"))
                      ,process-latex-math-line)
 
-      :whitespace (/ (some (set " \t")) ,|" ")
       :line-content (any (+ :whitespace
-                            :line-content-latex-inline
-                            :line-content-latex-inline-to-end
+                            :escaped
+                            :line-content-bold
+                            :line-content-italic
+                            :line-content-bold-italic
+                            :line-content-code
+                            :line-content-latex
+                            :line-content-latex-toend
                             :line-content-word
                             ))
 
-      :not-newline (<- (any (if-not "\n" 1)))
+      :whitespace (/ (some (set " \t")) ,|" ")
+      :escaped (* "\\" (<- (if-not "\n" 1)))
+      :line-content-word (<- (any (if-not (set " \t_*`\\\n") 1)))
 
-      :line-content-word (<- (any (if-not (set " \n") 1)))
-      :line-content-latex-inline (/ (* "${" :latex-math-block "}") ,process-latex-math-inline)
-      :line-content-latex-inline-to-end (/ (* "$:" :not-newline) ,process-latex-math-inline)
+      :line-content-bold (/ (* "*" (<- (any (if-not (set "*\n") 1))) "*")
+                            ,(named-capture :bold))
+      :line-content-italic (/ (* "_" (<- (any (if-not (set "_\n") 1))) "_")
+                              ,(named-capture :italic))
+      :line-content-bold-italic (/ (+ (* "*_" (<- (any (if-not (+ "_*" "\n") 1))) "_*")
+                                      (* "_*" (<- (any (if-not (+ "*_" "\n") 1))) "*_"))
+                                   ,(named-capture :bold-italic))
+      :line-content-code (/ (* "`" (<- (any (if-not (set "`\n") 1))) "`")
+                            ,(named-capture :code))
+
+      :line-content-latex (/ (* "${" :latex-math-block "}") ,process-latex-math-inline)
+      :line-content-latex-toend (/ (* "$:" :not-newline) ,process-latex-math-inline)
 
       :latex-math-block (any (+ :latex-math-nest
                                 :latex-math-text))
@@ -47,13 +80,14 @@
       :latex-math-text (<- (any (+ "\\{" "\\}" (if-not :latex-bracket 1))))
       :latex-math-nest (* (<- "{") :latex-math-block (<- "}"))
 
-      :indent ,indent-str
+      # utility patterns (?)
+      :not-newline (<- (any (if-not "\n" 1)))
       }))
 
 (def- header-peg
   (peg/compile
     ~{:main (* (any :entry) # a set of entries
-               (some "\n") # many whitespaces(?)
+               (any "\n") # many whitespaces(?)
                :body) # the rest of the document
 
       :entry (/ (* "%:" :identifier (some :s) :not-newline "\n")
@@ -74,7 +108,9 @@
   [str]
 
   (def header-result (:match header-peg str))
+
   (def options @{})
+
   (loop [[key val] :in (front header-result)]
     (set (options (keyword key)) val))
 

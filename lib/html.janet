@@ -57,12 +57,24 @@
   (def buf @"")
   (defn ps [& args]
     (loop [s :in args]
-      (buffer/push-string buf s)))
+      (buffer/push-string buf (string s))))
 
   (defn process-unit [node]
     (match node
       [:latex-math-inline text]
       (ps `<span class="katex-inline">` text "</span>")
+
+      [:bold text]
+      (ps `<b>` text `</b>`)
+
+      [:italic text]
+      (ps `<i>` text `</i>`)
+
+      [:bold-italic text]
+      (ps `<b><i>` text `</i></b>`)
+
+      [:code text]
+      (ps `<code>` text `</code>`)
 
       other
       (ps other)
@@ -83,23 +95,28 @@
   (if-let [title (in header :title)]
     (ps `<h1>` title `</h1>`))
 
+  (var indent 0)
+
   (each node ast
     (match node
+      [:indent i]
+      (set indent (* i 1.5))
+
       [:line-spaced & contents]
       (do
-        (ps `<p class="line-spaced">`)
+        (ps `<p class="line-spaced"` `style="margin-left: ` indent `em;">`)
         (loop [c :in contents] (process-unit c))
         (ps `</p>`))
 
       [:line-normal & contents]
       (do
-        (ps `<p class="line-normal">`)
+        (ps `<p class="line-normal"` `style="margin-left: ` indent `em;">`)
         (loop [c :in contents] (process-unit c))
         (ps `</p>`))
 
       [:line-latex & contents]
       (do
-        (ps `<p class="line-normal katex-display">`)
+        (ps `<p class="line-normal katex-display"` `style="margin-left: ` indent `em;">`)
         (loop [c :in contents] (process-unit c))
         (ps `</p>`))
 
