@@ -14,45 +14,50 @@
   }
   ```)
 
-(def- katex-header
-  ```
-  <link rel="stylesheet" href="katex.min.css"/>
-  <script src="katex.min.js" defer></script>
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      const macros = {};
-      const opts = {
-        throwOnError: false,
-        macros: macros,
-      };
+(defn- make-katex-header [katex-path]
+  (string/format
+    ```
+    <link rel="stylesheet" href="%skatex.min.css"/>
+    <script src="%skatex.min.js" defer></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        const macros = {};
+        const opts = {
+          throwOnError: false,
+          macros: macros,
+        };
 
-      for (let e of document.querySelectorAll(".katex-inline")) {
-        const text = e.innerText;
-        e.innerText = "";
-        katex.render(text, e, {displayMode: false, ...opts});
-      }
+        for (let e of document.querySelectorAll(".katex-inline")) {
+          const text = e.innerText;
+          e.innerText = "";
+          katex.render(text, e, {displayMode: false, ...opts});
+        }
 
-      for (let e of document.querySelectorAll(".katex-display")) {
-        const text = e.innerText;
-        e.innerText = "";
-        katex.render(text, e, {displayMode: true, fleqn: true, ...opts});
-      }
-    });
-  </script>
-  ```
-  )
+        for (let e of document.querySelectorAll(".katex-display")) {
+          const text = e.innerText;
+          e.innerText = "";
+          katex.render(text, e, {displayMode: true, fleqn: true, ...opts});
+        }
+      });
+    </script>
+    ```
+    katex-path
+    katex-path
+  ))
 
 (defn to-html
   ```Analyze `ast` and return its HTML representation.
 
   Options:
     :css - the CSS stylesheet to be used, as CSS code. Vulnerable to HTML injection.
+    :katex-path - the katex path prefix to use in the header.
   ```
   [parse-result opts]
 
   (def {:ast ast :header header} parse-result)
 
-  (def css (-> opts (in :css) (or default-css)))
+  (def css (-> opts (in :css default-css)))
+  (def katex-path (-> opts (in :katex-path ""))) # FIXME: SHOULDN'T BE VULNERABLE TO HTML INJECTION!
 
   (def buf @"")
   (defn ps [& args]
@@ -85,7 +90,7 @@
   (ps `<head>`)
   (ps `<meta charset="UTF-8"/>
        <meta name="viewport" content="width=device-width,initial-scale=1"/>`)
-  (ps katex-header)
+  (ps (make-katex-header katex-path))
   (ps `<style>`)
   (ps css)
   (ps `</style>`)
@@ -101,6 +106,9 @@
     (match node
       [:indent i]
       (set indent (* i 1.5))
+
+      [:line-comment & _]
+      ()
 
       [:line-spaced & contents]
       (do

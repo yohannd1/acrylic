@@ -36,9 +36,16 @@
     [:indent size])
 
   (peg/compile
-    ~{:main (* (some (* :indent (+ :line-latex :line-spaced :line-normal))))
+    ~{:main (* (some (* :indent (+ :line-comment
+                                   :line-latex
+                                   :line-spaced
+                                   :line-normal)))
+               (at-most 1 :tail))
+
+      :tail (/ (<- (some 1)) ,(named-capture :tail))
 
       :indent (/ (* (<- (any ,indent-str)) (<- (any " \t"))) ,process-indent)
+      :line-comment (/ (* "%%" :not-newline (any "\n")) ,(named-capture :line-comment))
       :line-spaced (* (/ :line-content ,(named-capture :line-spaced)) (at-least 2 "\n"))
       :line-normal (* (/ :line-content ,(named-capture :line-normal)) "\n")
       :line-latex (/ (* (+ (* "$$:" :not-newline)
@@ -48,18 +55,19 @@
 
       :line-content (any (+ :whitespace
                             :escaped
+                            :line-content-bold-italic
                             :line-content-bold
                             :line-content-italic
-                            :line-content-bold-italic
                             :line-content-code
                             :line-content-latex
                             :line-content-latex-toend
+                            :line-content-comment-toend
                             :line-content-word
                             ))
 
       :whitespace (/ (some (set " \t")) ,|" ")
       :escaped (* "\\" (<- (if-not "\n" 1)))
-      :line-content-word (<- (any (if-not (set " \t_*$`\\\n") 1)))
+      :line-content-word (<- (any (if-not (set " \t%_*$`\\\n") 1)))
 
       :line-content-bold (/ (* "*" (<- (any (if-not (set "*\n") 1))) "*")
                             ,(named-capture :bold))
@@ -70,6 +78,8 @@
                                    ,(named-capture :bold-italic))
       :line-content-code (/ (* "`" (<- (any (if-not (set "`\n") 1))) "`")
                             ,(named-capture :code))
+
+      :line-content-comment-toend (/ (* "%%" :not-newline) ,(named-capture :comment))
 
       :line-content-latex (/ (* "${" :latex-math-block "}") ,process-latex-math-inline)
       :line-content-latex-toend (/ (* "$:" :not-newline) ,process-latex-math-inline)
@@ -117,5 +127,19 @@
   (def body-peg (make-peg options))
   (def [_ body-str] (last header-result))
 
+  (def ast (:match body-peg body-str))
+  (match (last ast)
+    [:tail t]
+    (->
+      ```Content was not fully parsed.
+      Could not parse: %j
+      AST until then: %j
+      ```
+      (string/format t (front ast))
+      (error))
+
+    _
+    nil)
+
   {:header options
-   :ast (:match body-peg body-str)})
+   :ast ast})
