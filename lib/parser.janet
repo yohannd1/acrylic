@@ -97,7 +97,8 @@
       :escaped (* "\\" (<- (if-not "\n" 1)))
       :line-content-word (<- (any (if-not (set " \t%_*$`\\\n") 1)))
 
-      :line-content-bold (/ (* "*" (<- (any (if-not (set "*\n") 1))) "*")
+      # TODO: make inline-styles require either zero characters or any amount, as long as the first one isn't a space character (I did that with bold already here but it seems frail)
+      :line-content-bold (/ (* "*" (<- (* (if-not (set " \t*") 1) (any (if-not (set "*\n") 1)))) "*")
                             ,(named-capture :bold))
       :line-content-italic (/ (* "_" (<- (any (if-not (set "_\n") 1))) "_")
                               ,(named-capture :italic))
