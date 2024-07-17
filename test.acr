@@ -38,3 +38,7 @@ Second line
   Where ${ \Delta x = \frac {b-a} 2 } and ${ x_i = \Delta x i }
 
 Here are some random stray characters: * $ _ %
+
+( ) This is a task
+(x) This is a finished task
+(-) This is a cancelled task

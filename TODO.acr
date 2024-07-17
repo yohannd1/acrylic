@@ -2,48 +2,36 @@
 
 Very meta to have the to-do list in the format itself hehe
 
+@fold(Done):
 (x) Inline LaTeX math support (`${}`)
-
 (x) HTML - Don't use `<br/>` for line separation. Instead use `<p>` and two classes for the two kinds of line spacing.
-
 (x) KaTeX - initial setup
-
 (x) Parse "display math" (the one that's not inline - `$${}`)
-
 (x) implement `$$:` and `$:` syntax
-
 (x) Parse header
-
 (x) Get indent option (default=2, and can be tab if chosen)
-
 (x) implement inline *bold*, _italic_, _*bold-italic*_ and `code`
-
 (x) Parse the rest of the document, with `indent` being the indent unit
-
 (x) Parse error handling (at least error out! for the love of god)
-
 (x) Turn this into an actual program
-
 (x) Make `spaced` an attribute of lines (specially because the `:line-latex` rule can also be spaced sometimes!)
+@end
 
-( ) HTML - Escape sequences (I made code for that on my website - take it from over there)
+( ) Implement tasks
+
+( ) HTML - escape sequences + proper output ( get it from https://github.com/yohannd1/yohannd1.github.io )
+
+( ) Implement `%tags`
+
+( ) URL detection (can be turned off with `%:autoUrl` and manually on for a single thing with `@url`, kinda like `@ref`)
+
+( ) Cuter CSS
 
 ( ) KaTeX - automated download (maybe use npm? :sob:)
 
-( ) Actually do something with the LaTeX
-  - Probably use KaTeX by default: https://www.youtube.com/watch?v=KET6T6HZD2w
-
 ( ) automated tests. would be hella useful.
 
-( ) implement to-dos
-
-( ) cuter CSS
-
-( ) implement `%tags`
-
 ( ) Implement folding via `%-fold`
-
-( ) URL detection (can be turned off with `%:autoUrl` and manually on for a single thing with `@url`, kinda like `@ref`)
 
 ( ) implement `@functions{}`
 
@@ -63,18 +51,6 @@ Very meta to have the to-do list in the format itself hehe
 ( ) Implement folding via `@fold`
 
 ( ) Implement `@ref` (oh god that will be kind of tough)
-
-( ) multiline arg composition
-  - probably won't implement -- too much for this format
-  @code:
-  @code->
-    [lang (Bom dia)]
-    {This is arg 1}
-    {This is arg 2!!}
-  \@end
-  @end
-
-( ) implement @(raw-function-call) (BUT ONLY IF I FIGURE OUT SANDBOXING!!!!!!!)
 
 ( ) FSM parsing using C++, rust, dunno (probably faster and... honestly, easier to debug and maintain)
 

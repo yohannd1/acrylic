@@ -41,9 +41,11 @@
       )
     [:indent size])
 
-  (defn process-line [& args]
-    (pp args)
+  (defn process-inner-task [type- & args]
+    {:type ['task type-] :content args}
+    )
 
+  (defn process-line [& args]
     (def [indent-tup inner-line spacing] args)
     (def [_ indent] indent-tup)
     (def {:type t :content c} inner-line)
@@ -66,13 +68,17 @@
       # resulting format: struct with keys type,content
       :line-inner (+ :line-inner-comment
                      :line-inner-latex-display
+                     :line-inner-task
                      :line-inner-generic)
 
       :line-inner-comment (/ (* "%%" :not-newline) ,(capture-inner-line 'comment))
-      :line-inner-generic (/ (* :line-content) ,(capture-inner-line 'generic))
       :line-inner-latex-display (/ (+ (* "$$:" :not-newline)
                                       (* "$${" :latex-math-block "}"))
                                    ,capture-inner-line-latex)
+      :line-inner-task (/ (* :checkbox :line-content) ,process-inner-task)
+      :checkbox (+ (* "(" (<- (set "x -")) ")")
+                   (* "[" (<- (set "x -")) "]"))
+      :line-inner-generic (/ (* :line-content) ,(capture-inner-line 'generic))
 
       :line-content (any (+ :whitespace
                             :escaped

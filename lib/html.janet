@@ -113,13 +113,19 @@
     (array/push html-classes (if (-> node (in :spacing) (= 'big))
                                "line-spaced" "line-normal"))
 
+    (def before-content @[])
+    (def after-content @[])
+
     (defn write-node "do the stuff hehe" []
-      (pp node)
       (ps `<p class="`)
       (loop [class :in html-classes]
         (ps class ` `))
       (ps `" style="margin-left: ` indent `em;">`)
+      (loop [c :in before-content]
+        (process-unit c))
       (loop [c :in (in node :content)]
+        (process-unit c))
+      (loop [c :in after-content]
         (process-unit c))
       (ps `</p>`)
       )
@@ -134,6 +140,17 @@
       'latex
       (do
         (array/push html-classes "katex-display")
+        (write-node))
+
+      ['task type-]
+      (do
+        (match (string/ascii-lower type-)
+          " " (array/push before-content `<input type="checkbox" disabled/>`)
+          "x" (array/push before-content `<input type="checkbox" checked disabled/>`)
+          "-" (do
+                (array/push before-content `<input type="checkbox" checked disabled/><s>`)
+                (array/push after-content `</s>`)
+                ))
         (write-node))
 
       other
