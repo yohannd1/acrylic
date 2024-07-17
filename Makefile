@@ -1,5 +1,6 @@
 build:
 	# Right now this is uh... glitchy.
+	rm -r build
 	jpm build || true
 	gcc build/acr2html.c -o build/acr2html -ljanet
 

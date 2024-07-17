@@ -33,10 +33,7 @@
     (-> (find |(= $ needle) haystack)
         (nil?) (not)))
 
-  (while true
-    (when (is-over)
-      (break))
-
+  (while (not (is-over))
     (def opt (get-option))
 
     (cond
@@ -86,7 +83,7 @@
   (def contents (file-get-contents input-path))
   (def result (parser/parse contents))
   (when verbose
-    (eprintf "Parse results%j" result))
+    (eprintf "Parse results: %j" result))
 
   (def html (html/to-html result {:katex-path katex-path}))
 

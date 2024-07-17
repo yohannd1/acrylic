@@ -15,8 +15,14 @@
   (defn process-latex-math-inline [& args]
     [:latex-math-inline (string/join args)])
 
-  (defn process-latex-math-line [& args]
-    [:line-latex (string/join args)])
+  (defn capture-inner-line [name]
+    (defn callback [& args]
+      {:type name :content args})
+    callback)
+
+  (defn capture-inner-line-latex [& args]
+    (def f (capture-inner-line 'latex))
+    (f (string/join args)))
 
   (defn named-capture [name]
     (defn callback [& args] [name ;args])
@@ -35,23 +41,38 @@
       )
     [:indent size])
 
-  (peg/compile
-    ~{:main (* (some (* :indent (+ :line-comment
-                                   :line-latex
-                                   :line-spaced
-                                   :line-normal)))
-               (at-most 1 :tail))
+  (defn process-line [& args]
+    (pp args)
 
+    (def [indent-tup inner-line spacing] args)
+    (def [_ indent] indent-tup)
+    (def {:type t :content c} inner-line)
+
+    {:indent indent
+     :type t
+     :content c
+     :spacing (if (-> spacing (length) (> 1))
+                'big 'small)
+     })
+
+  (peg/compile
+    ~{:main (* (some :line) (? :tail))
+      :line (/ (* :indent :line-inner :spacing) ,process-line)
       :tail (/ (<- (some 1)) ,(named-capture :tail))
 
       :indent (/ (* (<- (any ,indent-str)) (<- (any " \t"))) ,process-indent)
-      :line-comment (/ (* "%%" :not-newline (any "\n")) ,(named-capture :line-comment))
-      :line-spaced (* (/ :line-content ,(named-capture :line-spaced)) (at-least 2 "\n"))
-      :line-normal (* (/ :line-content ,(named-capture :line-normal)) "\n")
-      :line-latex (/ (* (+ (* "$$:" :not-newline)
-                           (* "$${" :latex-math-block "}"))
-                        (some "\n"))
-                     ,process-latex-math-line)
+      :spacing (<- (some "\n"))
+
+      # resulting format: struct with keys type,content
+      :line-inner (+ :line-inner-comment
+                     :line-inner-latex-display
+                     :line-inner-generic)
+
+      :line-inner-comment (/ (* "%%" :not-newline) ,(capture-inner-line 'comment))
+      :line-inner-generic (/ (* :line-content) ,(capture-inner-line 'generic))
+      :line-inner-latex-display (/ (+ (* "$$:" :not-newline)
+                                      (* "$${" :latex-math-block "}"))
+                                   ,capture-inner-line-latex)
 
       :line-content (any (+ :whitespace
                             :escaped
@@ -62,6 +83,7 @@
                             :line-content-latex
                             :line-content-latex-toend
                             :line-content-comment-toend
+                            :line-content-stray-character
                             :line-content-word
                             ))
 
@@ -83,6 +105,8 @@
 
       :line-content-latex (/ (* "${" :latex-math-block "}") ,process-latex-math-inline)
       :line-content-latex-toend (/ (* "$:" :not-newline) ,process-latex-math-inline)
+
+      :line-content-stray-character (<- (set "*$%_"))
 
       :latex-math-block (any (+ :latex-math-nest
                                 :latex-math-text))
@@ -128,14 +152,16 @@
   (def [_ body-str] (last header-result))
 
   (def ast (:match body-peg body-str))
+  (when (nil? ast)
+    (error ```Failed to parse the content at all.```))
+
   (match (last ast)
     [:tail t]
     (->
       ```Content was not fully parsed.
       Could not parse: %j
-      AST until then: %j
       ```
-      (string/format t (front ast))
+      (string/format t)
       (error))
 
     _

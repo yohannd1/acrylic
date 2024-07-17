@@ -20,13 +20,15 @@ Very meta to have the to-do list in the format itself hehe
 
 (x) Parse the rest of the document, with `indent` being the indent unit
 
-( ) Turn this into an actual program
+(x) Parse error handling (at least error out! for the love of god)
 
-( ) KaTeX - automated download (maybe use npm? :sob:)
+(x) Turn this into an actual program
+
+(x) Make `spaced` an attribute of lines (specially because the `:line-latex` rule can also be spaced sometimes!)
 
 ( ) HTML - Escape sequences (I made code for that on my website - take it from over there)
 
-( ) Parse error handling (at least error out! for the love of god)
+( ) KaTeX - automated download (maybe use npm? :sob:)
 
 ( ) Actually do something with the LaTeX
   - Probably use KaTeX by default: https://www.youtube.com/watch?v=KET6T6HZD2w
@@ -45,11 +47,14 @@ Very meta to have the to-do list in the format itself hehe
 
 ( ) implement `@functions{}`
 
-( ) Keywords arguments as [] and positional arguments as {}. Would make things easier for me. Scribble-based.
+( ) Handle escaping characters inside inline text variants (bold/italic/code) -- or maybe not? And instead just let them on `@bold`, `@codeinline` and `@italic` or whatever I call them
+  - maybe `@ib` for bold, `@ic` for code and `@ii` for italic (inline-bold, inline-code, ...)
+
+( ) Keyword arguments as [kw{arg}{arg}] and positional arguments as {}. Would make things easier for me. Scribble-based.
 
 ( ) raw args?
   @code:
-  @code[lang (Bom dia)]#{{
+  @code[lang{Bom dia}]#{{
     this is raw but left-trimmed data
   }}
   \@end

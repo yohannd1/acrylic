@@ -21,6 +21,8 @@ This is _italic text_, and these are \_escaped underscores\_.
 This is `inline code`, and these are \`escaped backticks\`.
 And this is *_bold-italic_*. And this is _*italic-bold*_ (eh same thing)
 
+This is *bold text with an espaced \* inside it*.
+
 Second line
 
   Indented sub-line
@@ -34,3 +36,5 @@ Second line
   And now display math:
   $$: \int_a^b f(x) dx = \lim_{n \to \infty} \sum_{i=0}^n f(x_i) \Delta x
   Where ${ \Delta x = \frac {b-a} 2 } and ${ x_i = \Delta x i }
+
+Here are some random stray characters: * $ _ %

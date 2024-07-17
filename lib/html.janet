@@ -1,6 +1,9 @@
 (def- default-css
   ```
-  body {}
+  body {
+    font-family: sans-serif;
+    font-size: 1.08em;
+  }
   p.line-normal {
     margin-top: 0em;
     margin-bottom: 0.1em;
@@ -8,6 +11,9 @@
   p.line-spaced {
     margin-top: 0em;
     margin-bottom: 1.5em;
+  }
+  .katex-display {
+    margin: 0em 0em;
   }
   .katex-display.fleqn>.katex {
     padding-left: 0em;
@@ -100,37 +106,40 @@
   (if-let [title (in header :title)]
     (ps `<h1>` title `</h1>`))
 
-  (var indent 0)
-
   (each node ast
-    (match node
-      [:indent i]
-      (set indent (* i 1.5))
+    (def indent (-> node (in :indent) (* 1.25)))
 
-      [:line-comment & _]
-      ()
+    (def html-classes @[])
+    (array/push html-classes (if (-> node (in :spacing) (= 'big))
+                               "line-spaced" "line-normal"))
 
-      [:line-spaced & contents]
+    (defn write-node "do the stuff hehe" []
+      (pp node)
+      (ps `<p class="`)
+      (loop [class :in html-classes]
+        (ps class ` `))
+      (ps `" style="margin-left: ` indent `em;">`)
+      (loop [c :in (in node :content)]
+        (process-unit c))
+      (ps `</p>`)
+      )
+
+    (match (in node :type)
+      'generic
+      (write-node)
+
+      'comment
+      nil
+
+      'latex
       (do
-        (ps `<p class="line-spaced"` `style="margin-left: ` indent `em;">`)
-        (loop [c :in contents] (process-unit c))
-        (ps `</p>`))
-
-      [:line-normal & contents]
-      (do
-        (ps `<p class="line-normal"` `style="margin-left: ` indent `em;">`)
-        (loop [c :in contents] (process-unit c))
-        (ps `</p>`))
-
-      [:line-latex & contents]
-      (do
-        (ps `<p class="line-normal katex-display"` `style="margin-left: ` indent `em;">`)
-        (loop [c :in contents] (process-unit c))
-        (ps `</p>`))
+        (array/push html-classes "katex-display")
+        (write-node))
 
       other
       (error (string/format "Unknown form: %j" other))
-      ))
+      )
+    )
 
   (ps `</body>`)
   (ps `</html>`)
