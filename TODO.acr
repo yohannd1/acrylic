@@ -2,7 +2,6 @@
 
 Very meta to have the to-do list in the format itself hehe
 
-@fold(Done):
 (x) Inline LaTeX math support (`${}`)
 (x) HTML - Don't use `<br/>` for line separation. Instead use `<p>` and two classes for the two kinds of line spacing.
 (x) KaTeX - initial setup
@@ -15,11 +14,8 @@ Very meta to have the to-do list in the format itself hehe
 (x) Parse error handling (at least error out! for the love of god)
 (x) Turn this into an actual program
 (x) Make `spaced` an attribute of lines (specially because the `:line-latex` rule can also be spaced sometimes!)
-@end
-
-( ) Implement tasks
-
-( ) HTML - escape sequences + proper output ( get it from https://github.com/yohannd1/yohannd1.github.io )
+(x) Implement tasks
+(x) HTML - escape sequences + proper output ( get it from https://github.com/yohannd1/yohannd1.github.io )
 
 ( ) Implement `%tags`
 

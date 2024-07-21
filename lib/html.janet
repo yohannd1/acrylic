@@ -1,3 +1,5 @@
+(import ./html-tree)
+
 (def- default-css
   ```
   body {
@@ -21,37 +23,37 @@
   ```)
 
 (defn- make-katex-header [katex-path]
-  (string/format
+  (def inline-js
     ```
-    <link rel="stylesheet" href="%skatex.min.css"/>
-    <script src="%skatex.min.js" defer></script>
-    <script>
-      document.addEventListener("DOMContentLoaded", function() {
-        const macros = {};
-        const opts = {
-          throwOnError: false,
-          macros: macros,
-        };
+    document.addEventListener("DOMContentLoaded", function() {
+      const macros = {};
+      const opts = {
+        throwOnError: false,
+        macros: macros,
+      };
 
-        for (let e of document.querySelectorAll(".katex-inline")) {
-          const text = e.innerText;
-          e.innerText = "";
-          katex.render(text, e, {displayMode: false, ...opts});
-        }
+      for (let e of document.querySelectorAll(".katex-inline")) {
+        const text = e.innerText;
+        e.innerText = "";
+        katex.render(text, e, {displayMode: false, ...opts});
+      }
 
-        for (let e of document.querySelectorAll(".katex-display")) {
-          const text = e.innerText;
-          e.innerText = "";
-          katex.render(text, e, {displayMode: true, fleqn: true, ...opts});
-        }
-      });
-    </script>
-    ```
-    katex-path
-    katex-path
-  ))
+      for (let e of document.querySelectorAll(".katex-display")) {
+        const text = e.innerText;
+        e.innerText = "";
+        katex.render(text, e, {displayMode: true, fleqn: true, ...opts});
+      }
+    });
+    ```)
 
-(defn to-html
+  (def css-uri (string katex-path "katex.min.css"))
+  (def js-uri (string katex-path "katex.min.js"))
+
+  ~[(link {:rel "stylesheet" :href ,css-uri})
+    (script {:src ,js-uri :defer true})
+    (script {raw true} ,inline-js)])
+
+(defn ast->html
   ```Analyze `ast` and return its HTML representation.
 
   Options:
@@ -63,102 +65,100 @@
   (def {:ast ast :header header} parse-result)
 
   (def css (-> opts (in :css default-css)))
-  (def katex-path (-> opts (in :katex-path ""))) # FIXME: SHOULDN'T BE VULNERABLE TO HTML INJECTION!
+  (def katex-path (-> opts (in :katex-path "")))
 
-  (def buf @"")
-  (defn ps [& args]
-    (loop [s :in args]
-      (buffer/push-string buf (string s))))
+  (def head
+    ~(head
+       (meta {:name "viewport" :content "width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"})
+       (meta {:http-equiv "X-UA-Compatible" :content "IE=edge,chrome=1"})
+       (meta {:name "HandheldFriendly" :content "true"})
+       (meta {:charset "UTF-8"})
+       ,;(make-katex-header katex-path)
+       (style ,css)
+       ))
 
-  (defn process-unit [node]
-    (match node
-      [:latex-math-inline text]
-      (ps `<span class="katex-inline">` text "</span>")
-
-      [:bold text]
-      (ps `<b>` text `</b>`)
-
-      [:italic text]
-      (ps `<i>` text `</i>`)
-
-      [:bold-italic text]
-      (ps `<b><i>` text `</i></b>`)
-
-      [:code text]
-      (ps `<code>` text `</code>`)
-
-      other
-      (ps other)
-      ))
-
-  (ps `<!DOCTYPE html>`)
-  (ps `<html>`)
-  (ps `<head>`)
-  (ps `<meta charset="UTF-8"/>
-       <meta name="viewport" content="width=device-width,initial-scale=1"/>`)
-  (ps (make-katex-header katex-path))
-  (ps `<style>`)
-  (ps css)
-  (ps `</style>`)
-  (ps `</head>`)
-  (ps `<body>`)
+  (def body @[])
 
   (if-let [title (in header :title)]
-    (ps `<h1>` title `</h1>`))
+    (array/push body ~(h1 ,title)))
+
+  (defn process-component
+    ``Process the component of a ``
+    [c]
+
+    (match c
+      [:latex-math-inline text] ~(span {:class "katex-inline"} ,text)
+      [:bold text] ~(b ,text)
+      [:italic text] ~(i ,text)
+      [:bold-italic text] ~(b (i ,text))
+      [:code text] ~(code ,text)
+      [:comment _] ""
+      other (do
+              (assert (string? other) "Line component should be a string")
+              (string other))
+      ))
 
   (each node ast
+    (defn process-content
+      ``Process the content of the current node and output an array of HTML elements to be put inside the paragraph.``
+      []
+
+      (def content (-> node (in :content)))
+      (map process-component content))
+
     (def indent (-> node (in :indent) (* 1.25)))
 
-    (def html-classes @[])
-    (array/push html-classes (if (-> node (in :spacing) (= 'big))
-                               "line-spaced" "line-normal"))
+    (def line-class (if (-> node (in :spacing) (= 'big))
+                      "line-spaced" "line-normal"))
 
-    (def before-content @[])
-    (def after-content @[])
-
-    (defn write-node "do the stuff hehe" []
-      (ps `<p class="`)
-      (loop [class :in html-classes]
-        (ps class ` `))
-      (ps `" style="margin-left: ` indent `em;">`)
-      (loop [c :in before-content]
-        (process-unit c))
-      (loop [c :in (in node :content)]
-        (process-unit c))
-      (loop [c :in after-content]
-        (process-unit c))
-      (ps `</p>`)
-      )
+    (def attrs @{:class line-class
+                 :style (string/format "margin-left: %.2fem;" indent)})
 
     (match (in node :type)
       'generic
-      (write-node)
+      (do
+        (def line ~(p ,attrs ,;(process-content)))
+        (array/push body line))
 
       'comment
       nil
 
       'latex
       (do
-        (array/push html-classes "katex-display")
-        (write-node))
+        (set (attrs :class) (string (in attrs :class) " katex-display"))
+        (def line ~(p ,attrs ,;(process-content)))
+        (array/push body line))
 
       ['task type-]
       (do
-        (match (string/ascii-lower type-)
-          " " (array/push before-content `<input type="checkbox" disabled/>`)
-          "x" (array/push before-content `<input type="checkbox" checked disabled/>`)
+        (var line ~(p ,attrs))
+
+        (def checkbox-attrs @{:type "checkbox" :disabled true})
+        (def checkbox ~(input ,checkbox-attrs))
+
+        (case (string/ascii-lower type-)
+          # pending tasks
+          " " (do
+                (def line ~(p ,attrs ,checkbox ,;(process-content)))
+                (array/push body line))
+
+          # finished tasks
+          "x" (do
+                (set (checkbox-attrs :checked) true)
+                (def line ~(p ,attrs ,checkbox ,;(process-content)))
+                (array/push body line))
+
+          # cancelled tasks
           "-" (do
-                (array/push before-content `<input type="checkbox" checked disabled/><s>`)
-                (array/push after-content `</s>`)
-                ))
-        (write-node))
+                (set (checkbox-attrs :checked) true)
+                (def line ~(p ,attrs ,checkbox (s ,;(process-content))))
+                (array/push body line))
+          ))
 
       other
-      (error (string/format "Unknown form: %j" other))
+      (-> "Unknown form: %j" (string/format other) (error))
       )
+
     )
 
-  (ps `</body>`)
-  (ps `</html>`)
-
-  buf)
+  (html-tree/generate-html ~(html ,head (body ,;body))))

@@ -85,7 +85,7 @@
   (when verbose
     (eprintf "Parse results: %j" result))
 
-  (def html (html/to-html result {:katex-path katex-path}))
+  (def html (html/ast->html result {:katex-path katex-path}))
 
   (def output-file
     (if (nil? output-path)
