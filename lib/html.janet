@@ -74,7 +74,7 @@
        (meta {:name "HandheldFriendly" :content "true"})
        (meta {:charset "UTF-8"})
        ,;(make-katex-header katex-path)
-       (style ,css)
+       (style {raw true} ,css)
        ))
 
   (def body @[])
@@ -83,7 +83,7 @@
     (array/push body ~(h1 ,title)))
 
   (defn process-component
-    ``Process the component of a ``
+    ``Process the component of a [??? TODO(finish sentence)]``
     [c]
 
     (match c
@@ -93,9 +93,18 @@
       [:bold-italic text] ~(b (i ,text))
       [:code text] ~(code ,text)
       [:comment _] ""
-      other (do
-              (assert (string? other) "Line component should be a string")
-              (string other))
+
+      [:tag tag]
+      (do
+        # TODO: process the tag if it begins with -
+        ~(small "%" ,text)
+        )
+
+      other
+      (if (string? other)
+        other
+        (-> "Unknown line component: %j" (string/format other) (error)))
+
       ))
 
   (each node ast

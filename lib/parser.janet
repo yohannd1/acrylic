@@ -82,6 +82,7 @@
 
       :line-content (any (+ :whitespace
                             :escaped
+                            :line-content-tag
                             :line-content-bold-italic
                             :line-content-bold
                             :line-content-italic
@@ -96,6 +97,9 @@
       :whitespace (/ (some (set " \t")) ,|" ")
       :escaped (* "\\" (<- (if-not "\n" 1)))
       :line-content-word (<- (any (if-not (set " \t%_*$`\\\n") 1)))
+
+      :line-content-tag (/ (* "%" (<- (some (if-not (set " \t%\n") 1))))
+                           ,(named-capture :tag))
 
       # TODO: make inline-styles require either zero characters or any amount, as long as the first one isn't a space character (I did that with bold already here but it seems frail)
       :line-content-bold (/ (* "*" (<- (* (if-not (set " \t*") 1) (any (if-not (set "*\n") 1)))) "*")

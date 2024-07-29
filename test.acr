@@ -3,6 +3,8 @@
 
 First line
 
+This is a tag: %my_tag
+
 $${ S(n) = \sum_{i=0}^n i^2 }
 
 $$: \int_a^b f(x) dx
@@ -42,3 +44,9 @@ Here are some random stray characters: * $ _ %
 ( ) This is a task
 (x) This is a finished task
 (-) This is a cancelled task
+
+This is supposed to be a fold later: %-fold
+  Sub-node 1
+
+  Sub-node 2
+  Sub-node 3
