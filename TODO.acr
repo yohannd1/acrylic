@@ -19,8 +19,9 @@ Very meta to have the to-do list in the format itself hehe
 (x) Implement `%tags`
 (x) Bug fix - comments followed by multiple `\n`s inhibits the spacing
 (x) Bug fix (KaTeX) - display math lines need a little bit more space 
+(x) Implement folding via `%-fold`
 
-( ) Implement folding via `%-fold`
+( ) Menu on the top of the page (e.g. "fold all", "unfold all", "print" (which unfolds all, hides the menu and opens the print menu))
 
 ( ) Implement `@functions{}`
 

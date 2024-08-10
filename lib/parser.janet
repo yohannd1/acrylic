@@ -48,11 +48,17 @@
   (defn process-line [& args]
     (def [indent-tup inner-line spacing] args)
     (def [_ indent] indent-tup)
-    (def {:type t :content c} inner-line)
+    (def {:type type- :content content} inner-line)
+    (def tags @[])
+
+    (each c content
+      (match c
+        [:tag t] (array/push tags t)))
 
     {:indent indent
-     :type t
-     :content c
+     :type type-
+     :content content
+     :tags tags
      })
 
   (defn spacing-line []

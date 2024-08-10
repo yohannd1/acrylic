@@ -85,8 +85,69 @@
 
   (def body @[])
 
+  # fold stack entry format: {:indent <int> :elements <array>}
+  (def fold-stack @[])
+
+  (var pop-fold-stack nil)
+
+  (defn add-element [elem fold-opts]
+    (def {:indent indent :is-fold is-fold} (or fold-opts {}))
+
+    (defn add-or-fold []
+      (if is-fold
+        # it's a fold! begin a fold with the desired element
+        (array/push fold-stack {:indent indent :elements @[elem]})
+
+        # it's not a fold - just add it to wherever it should be
+        (if (empty? fold-stack)
+          (-> body (array/push elem))
+          (-> fold-stack (last) (in :elements) (array/push elem)))
+        )
+      )
+
+    # this part is responsible for deciding if we need to clean up
+    # folds or if we can already add the element, hence why the add-or-fold function is called in a few situations
+    (if (empty? fold-stack)
+      # normal flow
+      (add-or-fold)
+
+      (let [{:indent ts-indent :elements ts-elems} (last fold-stack)]
+        (if (<= indent ts-indent)
+          # whoops! the topmost fold entry is finished.
+          # let's pop and try again.
+          (do
+            (pop-fold-stack)
+            (add-element elem fold-opts))
+
+          # normal flow
+          (add-or-fold))
+          )
+        )
+      )
+
+  (defn pop-fold-stack-f
+    ``Pop the topmost entry from the fold-stack, adding its fold structure as an element.``
+    []
+
+    (when (empty? fold-stack)
+      (error "The fold stack is empty"))
+
+    (def {:indent indent :elements ts-elems} (array/pop fold-stack))
+
+    (def [summ-tag & summ-rest] (first ts-elems))
+    (assert (= summ-tag 'p) "Soon-to-be-summary element should've been a paragraph")
+
+    (add-element
+      ~(details
+         (summary ,;summ-rest)
+         ,;(array/slice ts-elems 1))
+      {:indent indent :is-fold false}
+      )
+    )
+  (set pop-fold-stack pop-fold-stack-f)
+
   (when title
-    (array/push body ~(h1 ,title)))
+    (add-element ~(h1 ,title) nil))
 
   (defn process-component
     ``Process the component of a [??? TODO(finish sentence)]``
@@ -125,16 +186,26 @@
 
     (def indent (-> node (in :indent 0) (* 1.25)))
 
+    (def is-fold
+      (do
+        (def indent (in node :indent 0))
+        (def tags (in node :tags []))
+        (def has-fold-tag (truthy? (find |(= "-fold" $) tags)))
+        has-fold-tag
+        ))
+
     (def attrs @{:style (string/format "margin-left: %.2fem;" indent)})
+
+    (def fold-opts {:indent indent :is-fold is-fold})
 
     (match (in node :type)
       'spacing
-      (array/push body ~(div {:class "acr-spacing"}))
+      (add-element ~(div {:class "acr-spacing"}) nil)
 
       'generic
       (do
         (def line ~(p ,attrs ,;(process-content)))
-        (array/push body line))
+        (add-element line fold-opts))
 
       'comment
       nil # do nothing
@@ -143,7 +214,7 @@
       (do
         (set (attrs :class) (string (in attrs :class "") " katex-display"))
         (def line ~(p ,attrs ,;(process-content)))
-        (array/push body line))
+        (add-element line fold-opts))
 
       ['task type-]
       (do
@@ -156,24 +227,26 @@
           # pending tasks
           " " (do
                 (def line ~(p ,attrs ,checkbox ,;(process-content)))
-                (array/push body line))
+                (add-element line fold-opts))
 
           # finished tasks
           "x" (do
                 (set (checkbox-attrs :checked) true)
                 (def line ~(p ,attrs ,checkbox ,;(process-content)))
-                (array/push body line))
+                (add-element line fold-opts))
 
           # cancelled tasks
           "-" (do
                 (set (checkbox-attrs :checked) true)
                 (def line ~(p ,attrs ,checkbox (s ,;(process-content))))
-                (array/push body line))
+                (add-element line fold-opts))
           ))
 
       other
       (-> "Unknown form: %j" (string/format other) (error))
       )
     )
+  (while (not (empty? fold-stack))
+    (pop-fold-stack))
 
   (html-tree/generate-html ~(html ,head (body ,;body))))
