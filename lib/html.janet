@@ -19,7 +19,7 @@
 
   /* katex display */
   .katex-display {
-    margin: 0em 0em;
+    margin: 0.5em 0em;
   }
   .katex-display.fleqn>.katex {
     padding-left: 0em;

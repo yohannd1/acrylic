@@ -18,10 +18,9 @@ Very meta to have the to-do list in the format itself hehe
 (x) HTML - escape sequences + proper output ( get it from https://github.com/yohannd1/yohannd1.github.io )
 (x) Implement `%tags`
 (x) Bug fix - comments followed by multiple `\n`s inhibits the spacing
+(x) Bug fix (KaTeX) - display math lines need a little bit more space 
 
 ( ) Implement folding via `%-fold`
-
-( ) Bug fix (KaTeX) - math lines need a little bit more space (I think I can do this in CSS)
 
 ( ) Implement `@functions{}`
 

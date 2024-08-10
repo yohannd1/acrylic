@@ -50,3 +50,7 @@ This is supposed to be a fold later: %-fold
 
   Sub-node 2
   Sub-node 3
+
+Two sums on consecutive lines:
+  $$: \sum_{i=0}^{\infty} \frac 1 i
+  $$: \sum_{k=5}^{10} (2k+1)

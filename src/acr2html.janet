@@ -83,7 +83,12 @@
   (def contents (file-get-contents input-path))
   (def result (parser/parse contents))
   (when verbose
-    (eprintf "Parse results: %j" result))
+    (eprintf "Parse results:")
+    (eprintf "AST nodes:")
+    (each node (in result :ast)
+      (eprintf "  %j" node))
+    (eprintf "Header: %j" (in result :header))
+    )
 
   (def html (html/ast->html result {:katex-path katex-path}))
 
