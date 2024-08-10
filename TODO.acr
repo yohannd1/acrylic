@@ -17,10 +17,13 @@ Very meta to have the to-do list in the format itself hehe
 (x) Implement tasks
 (x) HTML - escape sequences + proper output ( get it from https://github.com/yohannd1/yohannd1.github.io )
 (x) Implement `%tags`
+(x) Bug fix - comments followed by multiple `\n`s inhibits the spacing
 
 ( ) Implement folding via `%-fold`
 
-( ) implement `@functions{}`
+( ) Bug fix (KaTeX) - math lines need a little bit more space (I think I can do this in CSS)
+
+( ) Implement `@functions{}`
 
 ( ) URL detection (can be turned off with `%:autoUrl` and manually on for a single thing with `@url`, kinda like `@ref`)
 

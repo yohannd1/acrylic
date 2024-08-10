@@ -53,17 +53,18 @@
     {:indent indent
      :type t
      :content c
-     :spacing (if (-> spacing (length) (> 1))
-                'big 'small)
      })
+
+  (defn spacing-line []
+    {:type 'spacing})
 
   (peg/compile
     ~{:main (* (some :line) (? :tail))
-      :line (/ (* :indent :line-inner :spacing) ,process-line)
+      :line (+ (/ (some "\n") ,spacing-line)
+               (/ (* :indent :line-inner "\n") ,process-line))
       :tail (/ (<- (some 1)) ,(named-capture :tail))
 
       :indent (/ (* (<- (any ,indent-str)) (<- (any " \t"))) ,process-indent)
-      :spacing (<- (some "\n"))
 
       # resulting format: struct with keys type,content
       :line-inner (+ :line-inner-comment
@@ -80,7 +81,7 @@
                    (* "[" (<- (set "x -")) "]"))
       :line-inner-generic (/ (* :line-content) ,(capture-inner-line 'generic))
 
-      :line-content (any (+ :whitespace
+      :line-content (any (+ :line-content-whitespace
                             :escaped
                             :line-content-tag
                             :line-content-bold-italic
@@ -94,9 +95,12 @@
                             :line-content-word
                             ))
 
-      :whitespace (/ (some (set " \t")) ,|" ")
+      :line-content-whitespace (/ (some :whitespace-char) ,|" ")
+
       :escaped (* "\\" (<- (if-not "\n" 1)))
       :line-content-word (<- (any (if-not (set " \t%_*$`\\\n") 1)))
+
+      :whitespace-char (set " \t")
 
       :line-content-tag (/ (* "%" (<- (some (if-not (set " \t%\n") 1))))
                            ,(named-capture :tag))
