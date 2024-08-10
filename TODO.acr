@@ -18,8 +18,14 @@ Very meta to have the to-do list in the format itself hehe
 (x) HTML - escape sequences + proper output ( get it from https://github.com/yohannd1/yohannd1.github.io )
 (x) Implement `%tags`
 (x) Bug fix - comments followed by multiple `\n`s inhibits the spacing
-(x) Bug fix (KaTeX) - display math lines need a little bit more space 
+(x) Bug fix (KaTeX) - display math lines need a little bit more space
 (x) Implement folding via `%-fold`
+
+( ) Bug fix - folds eat up the spacing between them and the next element
+  - I can think of a quick fix for that, but it'll make things messy (the idea would be to just check whether a `div.spacing` is the last element of the fold and, if it is, just pop it off)
+
+( ) Bug fix - HTML output is taking dangerously long to generate longer pages
+  - This might not be a good thing to focus on for now.
 
 ( ) Menu on the top of the page (e.g. "fold all", "unfold all", "print" (which unfolds all, hides the menu and opens the print menu))
 
@@ -33,6 +39,8 @@ Very meta to have the to-do list in the format itself hehe
 
 ( ) Handle escaping characters inside inline text variants (bold/italic/code) -- or maybe not? And instead just let them on `@bold`, `@codeinline` and `@italic` or whatever I call them
   - maybe `@ib` for bold, `@ic` for code and `@ii` for italic (inline-bold, inline-code, ...)
+
+( ) bullet points (`*` and `-` at the start of lines)
 
 ( ) Keyword arguments as [kw{arg}{arg}] and positional arguments as {}. Would make things easier for me. Scribble-based.
 

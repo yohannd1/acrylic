@@ -81,7 +81,9 @@
     (show-help-and-exit))
 
   (def contents (file-get-contents input-path))
+  (eprintf "File loaded")
   (def result (parser/parse contents))
+  (eprintf "Contents parsed")
   (when verbose
     (eprintf "Parse results:")
     (eprintf "AST nodes:")
@@ -91,6 +93,7 @@
     )
 
   (def html (html/ast->html result {:katex-path katex-path}))
+  (eprintf "HTML generated")
 
   (def output-file
     (if (nil? output-path)
