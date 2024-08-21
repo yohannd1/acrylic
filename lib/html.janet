@@ -159,6 +159,7 @@
       [:italic text] ~(i ,text)
       [:bold-italic text] ~(b (i ,text))
       [:code text] ~(code ,text)
+      [:url text] ~(a {:href ,text} ,text)
       [:comment _] ""
 
       [:tag tag]

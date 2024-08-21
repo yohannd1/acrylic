@@ -55,6 +55,10 @@ Two sums on consecutive lines:
   $$: \sum_{i=0}^{\infty} \frac 1 i
   $$: \sum_{k=5}^{10} (2k+1)
 
+This is an HTTP url: http://duckduckgo.com/
+This is an HTTPS url: https://yohannd1.github.io/
+This is an FTP url: ftp://ftp.example.org/
+
 This is a fold with a nested sub-fold %-fold
 
   Please work. pelase work. please work.

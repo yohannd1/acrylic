@@ -89,6 +89,7 @@
 
       :line-content (any (+ :line-content-whitespace
                             :escaped
+                            :line-content-url
                             :line-content-tag
                             :line-content-bold-italic
                             :line-content-bold
@@ -101,12 +102,15 @@
                             :line-content-word
                             ))
 
-      :line-content-whitespace (/ (some :whitespace-char) ,|" ")
+      :line-content-whitespace (/ (some :set-whitespace) ,|" ")
 
       :escaped (* "\\" (<- (if-not "\n" 1)))
       :line-content-word (<- (any (if-not (set " \t%_*$`\\\n") 1)))
 
-      :whitespace-char (set " \t")
+      :set-whitespace (set " \t")
+
+      :line-content-url (/ (<- (* :a+ "://" (some (if-not (set " \t\n") 1))))
+                           ,(named-capture :url))
 
       :line-content-tag (/ (* "%" (<- (some (if-not (set " \t%\n") 1))))
                            ,(named-capture :tag))
