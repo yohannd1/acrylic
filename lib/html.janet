@@ -2,6 +2,11 @@
 
 (def- default-css
   ```
+  :root {
+    --col-fg-alt: #555;
+    --col-bg-alt: #FAFAFC;
+  }
+
   body {
     font-family: sans-serif;
     font-size: 1.08em;
@@ -15,6 +20,36 @@
   div.acr-spacing {
     margin-top: 0em;
     margin-bottom: 1.5em;
+  }
+
+  code, pre {
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+
+    font-family: monospace;
+    background: #f4f4f4;
+    border: 1px solid #DDD;
+    color: var(--col-fg-alt);
+    max-width: 100%;
+  }
+  code {
+    background-color: rgba(27, 31, 35, 0.05);
+    border-radius: 2px;
+    font-size: 85%;
+    margin: 0;
+    padding: 0.2em 0.4em;
+    padding-top: 0.2em;
+    padding-bottom: 0.1em;
+  }
+  pre {
+    padding: 1em 1.5em;
+    display: block;
+    page-break-inside: avoid;
+    line-height: 1.45;
+
+    background-color: var(--col-bg-alt);
+    border-radius: 3px;
   }
 
   /* katex display */
@@ -34,6 +69,7 @@
       const opts = {
         throwOnError: false,
         macros: macros,
+        globalGroup: true,
       };
 
       for (let e of document.querySelectorAll(".katex-inline")) {
