@@ -18,39 +18,28 @@ impl<'a> Parser<'a> {
     }
 
     fn assert_and_skip(iter: &mut Peekable<Chars<'a>>, expected: char) -> Option<()> {
-        match iter.peek() {
-            Some(&c) if c == expected => {
-                iter.next().unwrap();
-                Some(())
-            }
-            _ => None,
+        if iter.peek().copied().filter(|&c| c == expected).is_some() {
+            iter.next().unwrap();
+            Some(())
+        } else {
+            None
         }
     }
 
-    fn count_while(iter: &mut Peekable<Chars<'a>>, func: impl Fn(char) -> bool) -> usize {
+    fn count_while(iter: &mut Peekable<Chars<'a>>, pred: impl Fn(char) -> bool) -> usize {
         let mut i = 0;
-        'blk: loop {
-            match iter.peek() {
-                Some(&c) if func(c) => {
-                    i += 1;
-                    iter.next();
-                }
-                _ => break 'blk,
-            }
+        while let Some(c) = iter.peek().copied().filter(|&c| pred(c)) {
+            i += 1;
+            iter.next().unwrap();
         }
         i
     }
 
-    fn collect_while(iter: &mut Peekable<Chars<'a>>, func: impl Fn(char) -> bool) -> String {
+    fn collect_while(iter: &mut Peekable<Chars<'a>>, pred: impl Fn(char) -> bool) -> String {
         let mut ret = String::new();
-        'blk: loop {
-            match iter.peek() {
-                Some(&c) if func(c) => {
-                    ret.push(c);
-                    iter.next();
-                }
-                _ => break 'blk,
-            }
+        while let Some(c) = iter.peek().copied().filter(|&c| pred(c)) {
+            ret.push(c);
+            iter.next().unwrap();
         }
         ret
     }
@@ -105,7 +94,11 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if ret.len() > 0 { Some(ret) } else { None }
+        if ret.len() > 0 {
+            Some(ret)
+        } else {
+            None
+        }
     }
 
     fn is_escapable_char(c: char) -> bool {
