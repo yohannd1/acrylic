@@ -1,9 +1,9 @@
 mod parser;
-use crate::parser::Parser;
+mod tree;
 
 fn main() {
     match do_everything() {
-        Ok(()) => {},
+        Ok(()) => {}
         Err(e) => eprintln!("error: {}", e),
     }
 }
@@ -16,11 +16,10 @@ fn do_everything() -> Result<(), String> {
         return Err("bad arguments.\nUsage: PROGNAME <FILE>".into());
     }
 
-    let file_contents =
-        std::fs::read_to_string(&args[1]).map_err(|e| format!("failed to open input file: {:?}", e))?;
+    let file_contents = std::fs::read_to_string(&args[1])
+        .map_err(|e| format!("failed to open input file: {:?}", e))?;
 
-    let mut parser = Parser::new("hello! world");
-    eprintln!("{:?}", parser.get_word());
+    eprintln!("{:?}", crate::parser::parse_str(&file_contents));
 
     Ok(())
 }
