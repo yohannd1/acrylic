@@ -5,13 +5,15 @@ First line
 
 This is a tag: %my_tag
 
-$${ S(n) = \sum_{i=0}^n i^2 }
-
-$$: \int_a^b f(x) dx
-
 This is simple inline math: ${ x_2 + \sum_{n=0}^{\infty} a_n }
 
-inline math 2: $: x^2
+Inline math II -> $: x^2
+
+This is display math:
+$${ S(n) = \sum_{i=0}^n i^2 }
+
+Another method of doing display math:
+$$: \int_a^b f(x) dx
 
 mmyeah
 dshao

@@ -3,9 +3,32 @@ use std::collections::HashMap;
 #[derive(Debug)]
 pub enum Term {
     Word(String),
+    Tag(String),
+    InlineMath(String),
+    TaskPrefix {
+        state: TaskState,
+        format: TaskFormat,
+    }
 }
 
-pub type Line = Vec<Term>;
+#[derive(Debug)]
+pub enum TaskState {
+    Todo,
+    Done,
+    Cancelled,
+}
+
+#[derive(Debug)]
+pub enum TaskFormat {
+    Paren,
+    Square,
+}
+
+#[derive(Debug)]
+pub struct Line {
+    pub indent: usize,
+    pub terms: Vec<Term>,
+}
 
 #[derive(Debug)]
 pub struct PreDocument {
