@@ -30,12 +30,17 @@ pub struct Line {
     pub terms: Vec<Term>,
 }
 
+/// Preliminary document structure, still needing further analysis.
+///
+/// Once fully analyzed, the result should be [`Document`].
 #[derive(Debug)]
 pub struct PreDocument {
     pub header: HashMap<String, String>,
     pub lines: Vec<Line>,
 }
 
-// TODO: final document should be options (with standard options), other_options
+/// TODO: do this lol - it should be options (with standard options), other_options, ... and a tree of lines & terms?
+#[derive(Debug)]
+pub struct Document;
 
 // TODO: token metadata
