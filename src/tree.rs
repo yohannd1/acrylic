@@ -8,6 +8,8 @@ pub enum Term {
     InlineMath(String),
     DisplayMath(String),
     InlineCode(String),
+    InlineBold(String),
+    InlineItalics(String),
     TaskPrefix {
         state: TaskState,
         format: TaskFormat,

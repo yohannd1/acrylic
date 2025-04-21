@@ -111,6 +111,52 @@ macro_rules! make_parse_math {
     }
 }
 
+macro_rules! make_symetric_delimiter {
+    ($fn_name:ident, $delim:literal) => {
+        pub fn $fn_name(&mut self) -> Result<Option<String>, String> {
+            let mut p = self.clone();
+
+            if p.expect_and_skip($delim).is_none() {
+                return Ok(None);
+            }
+
+            let mut ret = String::new();
+            'blk: loop {
+                match p.peek() {
+                    Some($delim) => {
+                        p.step();
+                        break 'blk;
+                    }
+                    Some('\\') => {
+                        let mut p2 = p.clone();
+                        p2.step();
+
+                        match p2.peek() {
+                            Some($delim) => {
+                                ret.push($delim);
+                                p2.step();
+                                p = p2;
+                            }
+                            Some(c) => return Err(format!("unknown escape sequence: \\{}", c)),
+                            None => return Err("unexpected end of line".into()),
+                        }
+                    }
+                    Some('\n') | None => {
+                        return Err("unexpected end of line".into());
+                    }
+                    Some(c) => {
+                        ret.push(c);
+                        p.step();
+                    }
+                }
+            }
+
+            *self = p;
+            Ok(Some(ret))
+        }
+    };
+}
+
 #[derive(Debug, Clone)]
 struct DocParser<'a> {
     line: u32,
@@ -232,6 +278,36 @@ impl<'a> DocParser<'a> {
     }
 
     pub fn get_line(&mut self) -> Result<Option<Line>, String> {
+        let make_error_message = |p: &DocParser, msg: &str, terms_so_far: &[Term]| -> String {
+            let mut ret = String::new();
+            ret.push_str(msg);
+            ret.push('\n');
+
+            // TODO: the entire line!! Maybe return the error info and show the error at the
+            // callsite, because it knows the start of the string from there.
+            let line_to_end = p
+                .source
+                .find('\n')
+                .map(|i| &p.source[..i])
+                .unwrap_or_else(|| p.source);
+
+            let prefix = format!("{} | ... ", self.line);
+            ret.push_str(&prefix);
+
+            ret.push_str(line_to_end);
+            ret.push('\n');
+
+            ret.push_str(&" ".repeat(prefix.len()));
+            ret.push_str("^\n");
+
+            ret.push_str(&format!(
+                "Terms we managed to get in the line before the error: {:?}",
+                terms_so_far
+            ));
+
+            ret
+        };
+
         if self.peek().is_none() {
             return Ok(None);
         }
@@ -248,81 +324,53 @@ impl<'a> DocParser<'a> {
             indent_raw / indent_size
         };
 
+        let get_term = |p: &mut DocParser, terms_so_far: &[Term]| -> Result<Option<Term>, String> {
+            // TODO: task prefix (only when terms_so_far.len() == 0)
+            // TODO: comments (parse them and skip)
+            let result = if let Some(()) = p.get_inline_whitespace() {
+                Some(Term::InlineWhitespace)
+            } else if let Some(x) = p.get_inline_code()? {
+                Some(Term::InlineCode(x))
+            } else if let Some(x) = p.get_inline_bold()? {
+                Some(Term::InlineBold(x))
+            } else if let Some(x) = p.get_inline_italics()? {
+                Some(Term::InlineItalics(x))
+            } else if let Some(x) = p.get_tag() {
+                Some(Term::Tag(x))
+            } else if let Some(x) = p.get_inline_math_a()? {
+                Some(Term::InlineMath(x))
+            } else if let Some(x) = p.get_inline_math_b()? {
+                Some(Term::InlineMath(x))
+            } else if let Some(x) = p.get_display_math_a()? {
+                Some(Term::DisplayMath(x))
+            } else if let Some(x) = p.get_display_math_b()? {
+                Some(Term::DisplayMath(x))
+            } else if let Some(x) = p.get_word() {
+                Some(Term::Word(x))
+            } else {
+                None
+            };
+            Ok(result)
+        };
+
         let mut terms = Vec::new();
         loop {
-            if let Some(()) = p.get_inline_whitespace() {
-                terms.push(Term::InlineWhitespace);
-                continue;
+            match get_term(&mut p, &terms) {
+                Ok(Some(t)) => terms.push(t),
+                Ok(None) => break,
+                Err(e) => return Err(make_error_message(&p, &e, &terms)),
             }
-
-            if let Some(x) = p.get_inline_code()? {
-                terms.push(Term::InlineCode(x));
-                continue;
-            }
-
-            if let Some(x) = p.get_tag() {
-                terms.push(Term::Tag(x));
-                continue;
-            }
-
-            if let Some(x) = p.get_inline_math_a()? {
-                terms.push(Term::InlineMath(x));
-                continue;
-            }
-
-            if let Some(x) = p.get_inline_math_b()? {
-                terms.push(Term::InlineMath(x));
-                continue;
-            }
-
-            if let Some(x) = p.get_display_math_a()? {
-                terms.push(Term::DisplayMath(x));
-                continue;
-            }
-
-            if let Some(x) = p.get_display_math_b()? {
-                terms.push(Term::DisplayMath(x));
-                continue;
-            }
-
-            if let Some(x) = p.get_word() {
-                terms.push(Term::Word(x));
-                continue;
-            }
-
-            break;
         }
 
         // skip trailing whitespace
         p.skip_inline_whitespace();
 
         if !p.expect_line_end() {
-            let mut msg = String::new();
-            msg.push_str("failed to parse everything in the line!\n");
-
-            // TODO: the entire line!! Maybe return the error info and show the error at the
-            // callsite, because it knows the start of the string from there.
-            let line_to_end = p
-                .source
-                .find('\n')
-                .map(|i| &p.source[..i])
-                .unwrap_or_else(|| p.source);
-
-            let prefix = format!("{} | ... ", self.line);
-            msg.push_str(&prefix);
-
-            msg.push_str(line_to_end);
-            msg.push('\n');
-
-            msg.push_str(&" ".repeat(prefix.len()));
-            msg.push_str("^\n");
-
-            msg.push_str(&format!(
-                "Terms we managed to get in the line before that: {:?}",
-                terms
+            return Err(make_error_message(
+                &p,
+                "failed to parse everything in the line!",
+                &terms,
             ));
-
-            return Err(msg);
         }
 
         *self = p;
@@ -388,52 +436,9 @@ impl<'a> DocParser<'a> {
         }
     }
 
-    // TODO: italics, bold. use this:
-    // make_symetric_delimiter!(get_inline_code, '`');
-    // make_symetric_delimiter!(get_inline_bold, '*');
-    // make_symetric_delimiter!(get_inline_italics, '_');
-
-    pub fn get_inline_code(&mut self) -> Result<Option<String>, String> {
-        let mut p = self.clone();
-
-        if p.expect_and_skip('`').is_none() {
-            return Ok(None);
-        }
-
-        let mut ret = String::new();
-        'blk: loop {
-            match p.peek() {
-                Some('`') => {
-                    p.step();
-                    break 'blk;
-                }
-                Some('\\') => {
-                    let mut p2 = p.clone();
-                    p2.step();
-
-                    match p2.peek() {
-                        Some('`') => {
-                            ret.push('`');
-                            p2.step();
-                            p = p2;
-                        }
-                        Some(c) => return Err(format!("unknown escape sequence: \\{}", c)),
-                        None => return Err("unexpected end of line".into()),
-                    }
-                }
-                Some('\n') | None => {
-                    return Err("unexpected end of line".into());
-                }
-                Some(c) => {
-                    ret.push(c);
-                    p.step();
-                },
-            }
-        }
-
-        *self = p;
-        Ok(Some(ret))
-    }
+    make_symetric_delimiter!(get_inline_code, '`');
+    make_symetric_delimiter!(get_inline_bold, '*');
+    make_symetric_delimiter!(get_inline_italics, '_');
 
     make_parse_math!(get_inline_math_a, expect_start: ['$', '{'], end_on_bracket: true);
     make_parse_math!(get_inline_math_b, expect_start: ['$', ':'], end_on_bracket: false);
