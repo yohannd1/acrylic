@@ -2,9 +2,12 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub enum Term {
+    InlineWhitespace,
     Word(String),
     Tag(String),
     InlineMath(String),
+    DisplayMath(String),
+    InlineCode(String),
     TaskPrefix {
         state: TaskState,
         format: TaskFormat,

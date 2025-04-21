@@ -20,15 +20,115 @@ pub fn parse_str(document_str: &str) -> Result<PreDocument, String> {
     Ok(PreDocument { header, lines })
 }
 
+macro_rules! literal_if {
+    (true $ift:block else $iff:block) => {
+        $ift
+    };
+    (false $ift:block else $iff:block) => {
+        $iff
+    };
+}
+
+macro_rules! make_parse_math {
+    ($fn_name:ident, expect_start: $expect_start:expr, end_on_bracket: $end_on_bracket:tt) => {
+        pub fn $fn_name(&mut self) -> Result<Option<String>, String> {
+            let mut p = self.clone();
+
+            for &c in $expect_start.iter() {
+                if p.expect_and_skip(c).is_none() {
+                    return Ok(None);
+                }
+            }
+
+            let mut bracket_stack_size: usize = 0;
+
+            let mut ret = String::new();
+            'blk: loop {
+                match p.peek() {
+                    Some('{') => {
+                        bracket_stack_size += 1;
+                        ret.push('{');
+                        p.step();
+                    }
+                    Some('}') => {
+                        if bracket_stack_size > 0 {
+                            bracket_stack_size -= 1;
+                            ret.push('}');
+                            p.step();
+                        } else {
+                            literal_if!($end_on_bracket {
+                                p.step();
+                                break 'blk;
+                            } else {
+                                return Err("too many closing brackets!".into());
+                            })
+                        }
+                    }
+                    Some('\\') => {
+                        let mut p2 = p.clone();
+                        p2.step();
+
+                        match p2.peek() {
+                            Some('\n') | None => {
+                                return Err(
+                                    "line abruptly ended!! while parsing inline math escape".into()
+                                );
+                            }
+                            Some(c) => {
+                                // just forward it all to the latex parser :)
+                                ret.push('\\');
+                                ret.push(c);
+                                p2.step();
+                                p = p2;
+                            }
+                        }
+                    }
+                    Some(c) => {
+                        if c == '\n' {
+                            literal_if!($end_on_bracket {
+                            } else {
+                                p.step();
+                                break 'blk;
+                            })
+                        }
+
+                        ret.push(c);
+                        p.step();
+                    }
+                    None => {
+                        if bracket_stack_size > 0 {
+                            return Err("mismatched curly brackets!! while parsing inline math".into());
+                        } else {
+                            break 'blk;
+                        }
+                    }
+                }
+            }
+
+            *self = p;
+            Ok(Some(ret))
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 struct DocParser<'a> {
+    line: u32,
+    column: u32,
     source: &'a str,
-    // TODO: line and column info :)
+    // TODO: figure out a way to make this smaller?
 }
 
 impl<'a> DocParser<'a> {
+    /// Create a new instance of the parser.
+    ///
+    /// Initializes the line and column to 1.
     pub fn new(source: &'a str) -> Self {
-        Self { source }
+        Self {
+            source,
+            line: 1,
+            column: 1,
+        }
     }
 
     fn peek(&self) -> Option<char> {
@@ -36,8 +136,15 @@ impl<'a> DocParser<'a> {
     }
 
     fn step(&mut self) {
-        if self.source.len() == 0 {
+        let Some(c) = self.peek() else {
             return;
+        };
+
+        if c == '\n' {
+            self.line += 1;
+            self.column = 1;
+        } else {
+            self.column += 1;
         }
 
         self.source = &self.source[1..];
@@ -72,6 +179,14 @@ impl<'a> DocParser<'a> {
 
     fn skip_newlines(&mut self) {
         _ = self.count_while(|c| c == '\n');
+    }
+
+    fn get_inline_whitespace(&mut self) -> Option<()> {
+        if self.count_while(Self::is_inline_whitespace) > 0 {
+            Some(())
+        } else {
+            None
+        }
     }
 
     fn skip_inline_whitespace(&mut self) {
@@ -117,6 +232,10 @@ impl<'a> DocParser<'a> {
     }
 
     pub fn get_line(&mut self) -> Result<Option<Line>, String> {
+        if self.peek().is_none() {
+            return Ok(None);
+        }
+
         let mut p = self.clone();
 
         let indent_size = 2; // TODO: make this configurable (from the header)
@@ -131,40 +250,80 @@ impl<'a> DocParser<'a> {
 
         let mut terms = Vec::new();
         loop {
+            if let Some(()) = p.get_inline_whitespace() {
+                terms.push(Term::InlineWhitespace);
+                continue;
+            }
+
+            if let Some(x) = p.get_inline_code()? {
+                terms.push(Term::InlineCode(x));
+                continue;
+            }
+
             if let Some(x) = p.get_tag() {
                 terms.push(Term::Tag(x));
-                p.skip_inline_whitespace();
                 continue;
             }
 
             if let Some(x) = p.get_inline_math_a()? {
                 terms.push(Term::InlineMath(x));
-                p.skip_inline_whitespace();
                 continue;
             }
 
             if let Some(x) = p.get_inline_math_b()? {
                 terms.push(Term::InlineMath(x));
-                p.skip_inline_whitespace();
+                continue;
+            }
+
+            if let Some(x) = p.get_display_math_a()? {
+                terms.push(Term::DisplayMath(x));
+                continue;
+            }
+
+            if let Some(x) = p.get_display_math_b()? {
+                terms.push(Term::DisplayMath(x));
                 continue;
             }
 
             if let Some(x) = p.get_word() {
                 terms.push(Term::Word(x));
-                p.skip_inline_whitespace();
                 continue;
             }
 
             break;
         }
 
+        // skip trailing whitespace
         p.skip_inline_whitespace();
-        if !p.expect_line_end() {
-            eprintln!("Err! So far we got in this line: {:?}", terms);
-            return Err(format!("trailing tokens! The rest of the string is TODO(figure out how to PUT THE GODDAMN REST OF THE STRING HERE)"));
-        }
 
-        eprintln!("OK {:?}", terms);
+        if !p.expect_line_end() {
+            let mut msg = String::new();
+            msg.push_str("failed to parse everything in the line!\n");
+
+            // TODO: the entire line!! Maybe return the error info and show the error at the
+            // callsite, because it knows the start of the string from there.
+            let line_to_end = p
+                .source
+                .find('\n')
+                .map(|i| &p.source[..i])
+                .unwrap_or_else(|| p.source);
+
+            let prefix = format!("{} | ... ", self.line);
+            msg.push_str(&prefix);
+
+            msg.push_str(line_to_end);
+            msg.push('\n');
+
+            msg.push_str(&" ".repeat(prefix.len()));
+            msg.push_str("^\n");
+
+            msg.push_str(&format!(
+                "Terms we managed to get in the line before that: {:?}",
+                terms
+            ));
+
+            return Err(msg);
+        }
 
         *self = p;
         Ok(Some(Line { indent, terms }))
@@ -229,64 +388,46 @@ impl<'a> DocParser<'a> {
         }
     }
 
-    pub fn get_inline_math_a(&mut self) -> Result<Option<String>, String> {
+    // TODO: italics, bold. use this:
+    // make_symetric_delimiter!(get_inline_code, '`');
+    // make_symetric_delimiter!(get_inline_bold, '*');
+    // make_symetric_delimiter!(get_inline_italics, '_');
+
+    pub fn get_inline_code(&mut self) -> Result<Option<String>, String> {
         let mut p = self.clone();
 
-        if p.expect_and_skip('$').is_none() || p.expect_and_skip('{').is_none() {
+        if p.expect_and_skip('`').is_none() {
             return Ok(None);
         }
-
-        let mut bracket_stack_size: usize = 0;
 
         let mut ret = String::new();
         'blk: loop {
             match p.peek() {
-                Some('{') => {
-                    bracket_stack_size += 1;
-                    ret.push('{');
+                Some('`') => {
                     p.step();
-                }
-                Some('}') => {
-                    if bracket_stack_size > 0 {
-                        bracket_stack_size -= 1;
-                        ret.push('}');
-                        p.step();
-                    } else {
-                        ret.push('}');
-                        p.step();
-                        break 'blk;
-                    }
+                    break 'blk;
                 }
                 Some('\\') => {
                     let mut p2 = p.clone();
                     p2.step();
 
                     match p2.peek() {
-                        Some('\n') | None => {
-                            return Err(
-                                "line abruptly ended!! while parsing inline math escape".into()
-                            );
-                        }
-                        Some(c) => {
-                            // just forward it all to the latex parser :)
-                            ret.push('\\');
-                            ret.push(c);
+                        Some('`') => {
+                            ret.push('`');
                             p2.step();
                             p = p2;
                         }
+                        Some(c) => return Err(format!("unknown escape sequence: \\{}", c)),
+                        None => return Err("unexpected end of line".into()),
                     }
+                }
+                Some('\n') | None => {
+                    return Err("unexpected end of line".into());
                 }
                 Some(c) => {
                     ret.push(c);
                     p.step();
-                }
-                None => {
-                    if bracket_stack_size > 0 {
-                        return Err("mismatched curly brackets!! while parsing inline math".into());
-                    } else {
-                        break 'blk;
-                    }
-                }
+                },
             }
         }
 
@@ -294,74 +435,14 @@ impl<'a> DocParser<'a> {
         Ok(Some(ret))
     }
 
-    pub fn get_inline_math_b(&mut self) -> Result<Option<String>, String> {
-        let mut p = self.clone();
-
-        if p.expect_and_skip('$').is_none() || p.expect_and_skip('{').is_none() {
-            return Ok(None);
-        }
-
-        let mut bracket_stack_size: usize = 0;
-
-        let mut ret = String::new();
-        'blk: loop {
-            match p.peek() {
-                Some('{') => {
-                    bracket_stack_size += 1;
-                    ret.push('{');
-                    p.step();
-                }
-                Some('}') => {
-                    if bracket_stack_size > 0 {
-                        bracket_stack_size -= 1;
-                        ret.push('}');
-                        p.step();
-                    } else {
-                        return Err(
-                            "too many close curly brackets!! while parsing inline math".into()
-                        );
-                    }
-                }
-                Some('\\') => {
-                    let mut p2 = p.clone();
-                    p2.step();
-
-                    match p2.peek() {
-                        Some('\n') | None => {
-                            return Err(
-                                "line abruptly ended!! while parsing inline math escape".into()
-                            );
-                        }
-                        Some(c) => {
-                            // just forward it all to the latex parser :)
-                            ret.push('\\');
-                            ret.push(c);
-                            p2.step();
-                            p = p2;
-                        }
-                    }
-                }
-                Some(c) => {
-                    ret.push(c);
-                    p.step();
-                }
-                None => {
-                    if bracket_stack_size > 0 {
-                        return Err("mismatched curly brackets!! while parsing inline math".into());
-                    } else {
-                        break 'blk;
-                    }
-                }
-            }
-        }
-
-        *self = p;
-        Ok(Some(ret))
-    }
+    make_parse_math!(get_inline_math_a, expect_start: ['$', '{'], end_on_bracket: true);
+    make_parse_math!(get_inline_math_b, expect_start: ['$', ':'], end_on_bracket: false);
+    make_parse_math!(get_display_math_a, expect_start: ['$', '$', '{'], end_on_bracket: true);
+    make_parse_math!(get_display_math_b, expect_start: ['$', '$', ':'], end_on_bracket: false);
 
     fn is_escapable_char(c: char) -> bool {
         match c {
-            '\\' | '@' | '$' | '%' | '*' | '_' => true,
+            '\\' | '@' | '$' | '%' | '*' | '_' | '`' => true,
             _ => false,
         }
     }
