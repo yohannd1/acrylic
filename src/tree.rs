@@ -35,7 +35,7 @@ pub struct Line {
     pub terms: Vec<Term>,
 }
 
-/// Preliminary document structure, still needing further analysis.
+/// Stage-one document - comprised of a list of lines with arbitrary indents.
 ///
 /// Once fully analyzed, the result should be [`Document`].
 #[derive(Debug, Clone)]
@@ -58,8 +58,14 @@ pub struct StandardOptions {
     pub title: String,
 }
 
+/// Stage-two document, comprised of a tree of nodes.
+///
 /// TODO: do this lol - it should be options (with standard options), other_options, ... and a tree of lines & terms?
-#[derive(Debug)]
-pub struct Document;
+#[derive(Debug, Clone)]
+pub struct Document {
+    pub header: HashMap<String, String>,
+    pub options: StandardOptions,
+    pub nodes: Vec<Node>,
+};
 
 // TODO: token metadata

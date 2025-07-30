@@ -1,6 +1,9 @@
 mod parser;
 mod tree;
 
+// TODO: refactor code into different stages (one file per stage, except one file for typedefs)
+// TODO: preliminary HTML output
+
 fn main() {
     match do_everything() {
         Ok(()) => {}
