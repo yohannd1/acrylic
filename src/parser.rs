@@ -1,6 +1,15 @@
 use crate::tree::{Line, PreDocument, Term};
 use std::collections::HashMap;
 
+enum Indent {
+    Tab,
+    Space(usize),
+}
+
+struct Options {
+    indent: Indent,
+}
+
 /// Parses `document_str` into a [`PreDocument`].
 pub fn parse_str(document_str: &str) -> Result<PreDocument, String> {
     let mut p = DocParser::new(document_str);
@@ -10,10 +19,21 @@ pub fn parse_str(document_str: &str) -> Result<PreDocument, String> {
         header.insert(key, value);
     }
 
+    let indent = match header.get("indent").map(|s| s.trim()) {
+        Some("tab") => Indent::Tab,
+        Some(other) => other
+            .parse::<usize>()
+            .map(|x| Indent::Space(x))
+            .map_err(|_| format!("failed to parse indent"))?,
+        None => Indent::Space(2),
+    };
+
+    let options = Options { indent };
+
     p.skip_newlines();
 
     let mut lines = Vec::new();
-    while let Some(line) = p.get_line()? {
+    while let Some(line) = p.get_line(&options)? {
         lines.push(line);
     }
 
@@ -277,7 +297,7 @@ impl<'a> DocParser<'a> {
         Some((key, value))
     }
 
-    pub fn get_line(&mut self) -> Result<Option<Line>, String> {
+    pub fn get_line(&mut self, options: &Options) -> Result<Option<Line>, String> {
         let make_error_message = |p: &DocParser, msg: &str, terms_so_far: &[Term]| -> String {
             let mut ret = String::new();
             ret.push_str(msg);
@@ -314,14 +334,18 @@ impl<'a> DocParser<'a> {
 
         let mut p = self.clone();
 
-        let indent_size = 2; // TODO: make this configurable (from the header)
-        let indent_raw = p.count_while(|c| c == ' ');
-        let indent = if indent_raw % indent_size != 0 {
-            return Err(format!(
-                "bad indent: {indent_raw} spaces is not divisible by indent size {indent_size}"
-            ));
-        } else {
-            indent_raw / indent_size
+        let indent = match options.indent {
+            Indent::Tab => p.count_while(|c| c == '\t'),
+            Indent::Space(n) => {
+                let count = p.count_while(|c| c == ' ');
+                if count % n != 0 {
+                    return Err(format!(
+                        "bad indent: {count} spaces is not divisible by indent size {n}"
+                    ));
+                } else {
+                    count / n
+                }
+            }
         };
 
         let get_term = |p: &mut DocParser, terms_so_far: &[Term]| -> Result<Option<Term>, String> {
