@@ -1,14 +1,5 @@
-use crate::tree::{Line, PreDocument, Term};
+use crate::tree::{Indent, Line, PreDocument, StandardOptions, Term};
 use std::collections::HashMap;
-
-enum Indent {
-    Tab,
-    Space(usize),
-}
-
-struct Options {
-    indent: Indent,
-}
 
 /// Parses `document_str` into a [`PreDocument`].
 pub fn parse_str(document_str: &str) -> Result<PreDocument, String> {
@@ -19,7 +10,7 @@ pub fn parse_str(document_str: &str) -> Result<PreDocument, String> {
         header.insert(key, value);
     }
 
-    let indent = match header.get("indent").map(|s| s.trim()) {
+    let indent = match header.remove("indent").as_ref().map(|s| s.trim()) {
         Some("tab") => Indent::Tab,
         Some(other) => other
             .parse::<usize>()
@@ -28,7 +19,28 @@ pub fn parse_str(document_str: &str) -> Result<PreDocument, String> {
         None => Indent::Space(2),
     };
 
-    let options = Options { indent };
+    let parse_tags = |tags: &str| -> Vec<String> {
+        tags.split(" ")
+            .filter(|x| !x.is_empty())
+            .map(String::from)
+            .collect()
+    };
+
+    let tags = header
+        .remove("tags")
+        .as_ref()
+        .map(|s| parse_tags(s))
+        .unwrap_or_else(|| Vec::new());
+
+    let title = header
+        .remove("title")
+        .unwrap_or_else(|| format!("<No title>"));
+
+    let options = StandardOptions {
+        indent,
+        tags,
+        title,
+    };
 
     p.skip_newlines();
 
@@ -37,7 +49,11 @@ pub fn parse_str(document_str: &str) -> Result<PreDocument, String> {
         lines.push(line);
     }
 
-    Ok(PreDocument { header, lines })
+    Ok(PreDocument {
+        header,
+        options,
+        lines,
+    })
 }
 
 macro_rules! literal_if {
@@ -297,7 +313,7 @@ impl<'a> DocParser<'a> {
         Some((key, value))
     }
 
-    pub fn get_line(&mut self, options: &Options) -> Result<Option<Line>, String> {
+    pub fn get_line(&mut self, options: &StandardOptions) -> Result<Option<Line>, String> {
         let make_error_message = |p: &DocParser, msg: &str, terms_so_far: &[Term]| -> String {
             let mut ret = String::new();
             ret.push_str(msg);
@@ -348,34 +364,36 @@ impl<'a> DocParser<'a> {
             }
         };
 
-        let get_term = |p: &mut DocParser, terms_so_far: &[Term]| -> Result<Option<Term>, String> {
-            // TODO: task prefix (only when terms_so_far.len() == 0)
-            // TODO: comments (parse them and skip)
-            let result = if let Some(()) = p.get_inline_whitespace() {
-                Some(Term::InlineWhitespace)
-            } else if let Some(x) = p.get_inline_code()? {
-                Some(Term::InlineCode(x))
-            } else if let Some(x) = p.get_inline_bold()? {
-                Some(Term::InlineBold(x))
-            } else if let Some(x) = p.get_inline_italics()? {
-                Some(Term::InlineItalics(x))
-            } else if let Some(x) = p.get_tag() {
-                Some(Term::Tag(x))
-            } else if let Some(x) = p.get_inline_math_a()? {
-                Some(Term::InlineMath(x))
-            } else if let Some(x) = p.get_inline_math_b()? {
-                Some(Term::InlineMath(x))
-            } else if let Some(x) = p.get_display_math_a()? {
-                Some(Term::DisplayMath(x))
-            } else if let Some(x) = p.get_display_math_b()? {
-                Some(Term::DisplayMath(x))
-            } else if let Some(x) = p.get_word() {
-                Some(Term::Word(x))
-            } else {
-                None
+        let get_term =
+            |p: &mut DocParser, _terms_so_far: &[Term]| -> Result<Option<Term>, String> {
+                // TODO: task prefix (only when terms_so_far.len() == 0)
+                // TODO: comments (parse them and skip)
+                // TODO: url parsing
+                let result = if let Some(()) = p.get_inline_whitespace() {
+                    Some(Term::InlineWhitespace)
+                } else if let Some(x) = p.get_inline_code()? {
+                    Some(Term::InlineCode(x))
+                } else if let Some(x) = p.get_inline_bold()? {
+                    Some(Term::InlineBold(x))
+                } else if let Some(x) = p.get_inline_italics()? {
+                    Some(Term::InlineItalics(x))
+                } else if let Some(x) = p.get_tag() {
+                    Some(Term::Tag(x))
+                } else if let Some(x) = p.get_inline_math_a()? {
+                    Some(Term::InlineMath(x))
+                } else if let Some(x) = p.get_inline_math_b()? {
+                    Some(Term::InlineMath(x))
+                } else if let Some(x) = p.get_display_math_a()? {
+                    Some(Term::DisplayMath(x))
+                } else if let Some(x) = p.get_display_math_b()? {
+                    Some(Term::DisplayMath(x))
+                } else if let Some(x) = p.get_word() {
+                    Some(Term::Word(x))
+                } else {
+                    None
+                };
+                Ok(result)
             };
-            Ok(result)
-        };
 
         let mut terms = Vec::new();
         loop {
