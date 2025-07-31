@@ -72,4 +72,5 @@ pub struct Document {
 pub struct Node {
     pub contents: Vec<Term>,
     pub children: Vec<Node>,
+    pub bottom_spacing: bool,
 }

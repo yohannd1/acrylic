@@ -3,6 +3,11 @@
 mod parser;
 mod tree;
 
+use crate::{
+    parser::parse,
+    tree::{Node, Term},
+};
+
 // TODO: refactor code into different stages (one file per stage, except one file for typedefs)
 // TODO: preliminary HTML output
 
@@ -26,10 +31,39 @@ fn begin() -> Result<(), String> {
     let file_contents = std::fs::read_to_string(&args[1])
         .map_err(|e| format!("failed to open input file: {:?}", e))?;
 
-    let s1 = crate::parser::stage1::parse(&file_contents)?;
-    let s2 = crate::parser::stage2::parse(s1);
+    let result = parse(&file_contents)?;
+    for child in &result.nodes {
+        print_node(child, 0);
+    }
 
-    eprintln!("{:#?}", s2);
+    // eprintln!("{:?}", parse("foo\n  bar\n  baz")?);
 
     Ok(())
+}
+
+fn print_node(node: &Node, indent: usize) {
+    for _ in 0..indent {
+        eprint!("  ");
+    }
+    for term in &node.contents {
+        match term {
+            Term::InlineWhitespace => eprint!(" "),
+            Term::Word(x) => eprint!("{x}"),
+            Term::Tag(x) => eprint!("%{x}"),
+            Term::InlineMath(x) => eprint!("${{{x}}}"),
+            Term::DisplayMath(x) => eprint!("$${{{x}}}"),
+            Term::InlineCode(x) => eprint!("`{x}`"),
+            Term::InlineBold(x) => eprint!("*{x}*"),
+            Term::InlineItalics(x) => eprint!("_{x}_"),
+            Term::TaskPrefix { state, format } => eprint!("{state:?} {format:?}"),
+        }
+    }
+    eprintln!();
+    if node.bottom_spacing {
+        eprintln!("»");
+    }
+
+    for child in &node.children {
+        print_node(child, indent + 1);
+    }
 }

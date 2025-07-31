@@ -13,7 +13,7 @@ pub fn parse(document_str: &str) -> Result<PreDocument, String> {
         Some("tab") => Indent::Tab,
         Some(other) => other
             .parse::<usize>()
-            .map(|x| Indent::Space(x))
+            .map(Indent::Space)
             .map_err(|_| format!("failed to parse indent"))?,
         None => Indent::Space(2),
     };
