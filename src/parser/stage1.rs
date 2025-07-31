@@ -360,42 +360,50 @@ impl<'a> DocParser<'a> {
             }
         };
 
-        let get_term =
-            |p: &mut DocParser, _terms_so_far: &[Term]| -> Result<Option<Term>, String> {
-                // TODO: task prefix (only when terms_so_far.len() == 0)
-                // TODO: comments (parse them and skip)
-                // TODO: url parsing
-                let result = if let Some(()) = p.get_inline_whitespace() {
-                    Some(Term::InlineWhitespace)
-                } else if let Some(x) = p.get_inline_code()? {
-                    Some(Term::InlineCode(x))
-                } else if let Some(x) = p.get_inline_bold()? {
-                    Some(Term::InlineBold(x))
-                } else if let Some(x) = p.get_inline_italics()? {
-                    Some(Term::InlineItalics(x))
-                } else if let Some(x) = p.get_tag() {
-                    Some(Term::Tag(x))
-                } else if let Some(x) = p.get_inline_math_a()? {
-                    Some(Term::InlineMath(x))
-                } else if let Some(x) = p.get_inline_math_b()? {
-                    Some(Term::InlineMath(x))
-                } else if let Some(x) = p.get_display_math_a()? {
-                    Some(Term::DisplayMath(x))
-                } else if let Some(x) = p.get_display_math_b()? {
-                    Some(Term::DisplayMath(x))
-                } else if let Some(x) = p.get_word() {
-                    Some(Term::Word(x))
-                } else {
-                    None
-                };
-                Ok(result)
+        enum TermResponse {
+            Some(Term),
+            None,
+            Skip,
+        }
+
+        fn get_term(p: &mut DocParser, _terms_so_far: &[Term]) -> Result<TermResponse, String> {
+            // TODO: task prefix (only when terms_so_far.len() == 0)
+            // TODO: url parsing
+            let result = if let Some(()) = p.get_inline_whitespace() {
+                TermResponse::Some(Term::InlineWhitespace)
+            } else if let Some(x) = p.get_comment() {
+                TermResponse::Skip
+            } else if let Some(x) = p.get_inline_code()? {
+                TermResponse::Some(Term::InlineCode(x))
+            } else if let Some(x) = p.get_inline_bold()? {
+                TermResponse::Some(Term::InlineBold(x))
+            } else if let Some(x) = p.get_inline_italics()? {
+                TermResponse::Some(Term::InlineItalics(x))
+            } else if let Some(x) = p.get_tag() {
+                TermResponse::Some(Term::Tag(x))
+            } else if let Some(x) = p.get_inline_math_a()? {
+                TermResponse::Some(Term::InlineMath(x))
+            } else if let Some(x) = p.get_inline_math_b()? {
+                TermResponse::Some(Term::InlineMath(x))
+            } else if let Some(x) = p.get_display_math_a()? {
+                TermResponse::Some(Term::DisplayMath(x))
+            } else if let Some(x) = p.get_display_math_b()? {
+                TermResponse::Some(Term::DisplayMath(x))
+            } else if let Some(x) = p.get_word() {
+                TermResponse::Some(Term::Word(x))
+            } else {
+                TermResponse::None
             };
+
+            Ok(result)
+        }
 
         let mut terms = Vec::new();
         loop {
             match get_term(&mut p, &terms) {
-                Ok(Some(t)) => terms.push(t),
-                Ok(None) => break,
+                Ok(TermResponse::Some(t)) => terms.push(t),
+                Ok(TermResponse::None) => break,
+                Ok(TermResponse::Skip) => {},
                 Err(e) => return Err(make_error_message(&p, &e, &terms)),
             }
         }
@@ -451,6 +459,22 @@ impl<'a> DocParser<'a> {
                 _ => break 'blk,
             }
         }
+
+        if ret.len() > 0 {
+            *self = p;
+            Some(ret)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_comment(&mut self) -> Option<String> {
+        let mut p = self.clone();
+
+        p.expect_and_skip('%')?;
+        p.expect_and_skip('%')?;
+
+        let ret = p.collect_while(|c| c != '\n');
 
         if ret.len() > 0 {
             *self = p;

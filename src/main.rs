@@ -8,8 +8,9 @@ use crate::{
     tree::{Node, Term},
 };
 
-// TODO: refactor code into different stages (one file per stage, except one file for typedefs)
 // TODO: preliminary HTML output
+// TODO: automatic testing for stage1 - conditions where each type of term parses
+// TODO: automatic testing for stage2 - mostly the indent and spacing stuff
 
 fn main() {
     match begin() {
@@ -35,8 +36,6 @@ fn begin() -> Result<(), String> {
     for child in &result.nodes {
         print_node(child, 0);
     }
-
-    // eprintln!("{:?}", parse("foo\n  bar\n  baz")?);
 
     Ok(())
 }
