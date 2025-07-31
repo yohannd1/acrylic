@@ -28,8 +28,7 @@ pub fn parse_str(document_str: &str) -> Result<PreDocument, String> {
 
     let tags = header
         .remove("tags")
-        .as_ref()
-        .map(|s| parse_tags(s))
+        .map(|s| parse_tags(&s))
         .unwrap_or_else(|| Vec::new());
 
     let title = header
@@ -290,8 +289,6 @@ impl<'a> DocParser<'a> {
 
         p.expect_and_skip('%')?;
         p.expect_and_skip(':')?;
-
-        // error instead of these stupid errors here
 
         let key = p.collect_while(|c| !Self::is_inline_whitespace(c));
         if key.len() == 0 {

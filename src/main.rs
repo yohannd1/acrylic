@@ -1,17 +1,20 @@
+#![allow(dead_code)]
+
 mod parser;
 mod tree;
+mod stage2;
 
 // TODO: refactor code into different stages (one file per stage, except one file for typedefs)
 // TODO: preliminary HTML output
 
 fn main() {
-    match do_everything() {
+    match begin() {
         Ok(()) => {}
         Err(e) => eprintln!("error: {}", e),
     }
 }
 
-fn do_everything() -> Result<(), String> {
+fn begin() -> Result<(), String> {
     let args: Vec<String> = std::env::args().collect();
 
     eprintln!("Size of Term: {:?}", std::mem::size_of::<tree::Term>());
@@ -24,7 +27,10 @@ fn do_everything() -> Result<(), String> {
     let file_contents = std::fs::read_to_string(&args[1])
         .map_err(|e| format!("failed to open input file: {:?}", e))?;
 
-    eprintln!("{:#?}", crate::parser::parse_str(&file_contents)?);
+    let s1 = crate::parser::parse_str(&file_contents)?;
+    let s2 = crate::stage2::process(s1);
+
+    eprintln!("{:#?}", s2);
 
     Ok(())
 }

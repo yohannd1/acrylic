@@ -66,6 +66,10 @@ pub struct Document {
     pub header: HashMap<String, String>,
     pub options: StandardOptions,
     pub nodes: Vec<Node>,
-};
+}
 
-// TODO: token metadata
+#[derive(Debug, Clone)]
+pub struct Node {
+    pub contents: Vec<Term>,
+    pub children: Vec<Node>,
+}
