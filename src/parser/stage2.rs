@@ -1,6 +1,6 @@
 use crate::tree::{Document, Line, Node, PreDocument};
 
-pub fn process(doc: PreDocument) -> Result<Document, String> {
+pub fn parse(doc: PreDocument) -> Result<Document, String> {
     let mut nodes = Vec::new();
 
     // Stack with the current "hierarchy" of nodes being processed.

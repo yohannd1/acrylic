@@ -1,8 +1,7 @@
 use crate::tree::{Indent, Line, PreDocument, StandardOptions, Term};
 use std::collections::HashMap;
 
-/// Parses `document_str` into a [`PreDocument`].
-pub fn parse_str(document_str: &str) -> Result<PreDocument, String> {
+pub fn parse(document_str: &str) -> Result<PreDocument, String> {
     let mut p = DocParser::new(document_str);
 
     let mut header = HashMap::new();

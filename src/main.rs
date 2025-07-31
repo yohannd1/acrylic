@@ -2,7 +2,6 @@
 
 mod parser;
 mod tree;
-mod stage2;
 
 // TODO: refactor code into different stages (one file per stage, except one file for typedefs)
 // TODO: preliminary HTML output
@@ -27,8 +26,8 @@ fn begin() -> Result<(), String> {
     let file_contents = std::fs::read_to_string(&args[1])
         .map_err(|e| format!("failed to open input file: {:?}", e))?;
 
-    let s1 = crate::parser::parse_str(&file_contents)?;
-    let s2 = crate::stage2::process(s1);
+    let s1 = crate::parser::stage1::parse(&file_contents)?;
+    let s2 = crate::parser::stage2::parse(s1);
 
     eprintln!("{:#?}", s2);
 
