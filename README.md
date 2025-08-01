@@ -11,9 +11,8 @@ format, with some exceptions.
 
 - [vim plugin](https://github.com/yohannd1/acrylic.vim) for this format;
 
-- [related scripts in my
-- dotfiles](https://github.com/yohannd1/dotfiles/blob/master/scripts)
-- (they start with `acr-`);
+- [related scripts in my dotfiles](https://github.com/yohannd1/dotfiles/blob/master/scripts)
+(they start with `acr-`);
 
 ## plans
 
