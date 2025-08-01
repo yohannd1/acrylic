@@ -19,6 +19,10 @@ div.acr-spacing {
     margin-bottom: 1.5em;
 }
 
+summary:hover {
+    background-color: var(--col-bg-alt);
+}
+
 code, pre {
     white-space: pre-wrap;
     overflow-wrap: break-word;

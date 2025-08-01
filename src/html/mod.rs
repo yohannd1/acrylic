@@ -1,4 +1,4 @@
-//! HTML output module.
+//! HTML output backend.
 
 use crate::parser::{DocumentSt2, Node, Term};
 use std::collections::HashMap;
@@ -11,9 +11,11 @@ use primitives::{elem, text};
 
 #[derive(Debug, Clone)]
 pub struct HtmlOptions<'a> {
+    /// The path to the KaTeX resources - must be either a relative unix path or a valid URI prefix.
     pub katex_path: &'a str,
 }
 
+/// Write the HTML representation of `doc` into `w`.
 pub fn write_html<W>(w: &mut W, doc: &DocumentSt2, options: &HtmlOptions<'_>) -> io::Result<()>
 where
     W: io::Write,
