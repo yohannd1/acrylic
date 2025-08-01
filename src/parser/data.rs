@@ -12,6 +12,13 @@ pub enum Term {
     InlineBold(String),
     InlineItalics(String),
     TaskPrefix(TaskPrefix),
+    BulletPrefix(BulletType),
+}
+
+#[derive(Debug, Clone)]
+pub enum BulletType {
+    Dash,
+    Star,
 }
 
 #[derive(Debug, Clone)]

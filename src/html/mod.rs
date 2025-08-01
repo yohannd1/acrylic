@@ -1,6 +1,6 @@
 //! HTML output backend.
 
-use crate::parser::{DocumentSt2, Node, Term, TaskState};
+use crate::parser::{DocumentSt2, Node, Term, TaskState, BulletType};
 use std::collections::HashMap;
 use std::io;
 
@@ -132,6 +132,10 @@ where
                 Term::InlineCode(x) => elem(w, "code", [], |w| text(w, x))?,
                 Term::InlineBold(x) => elem(w, "b", [], |w| text(w, x))?,
                 Term::InlineItalics(x) => elem(w, "i", [], |w| text(w, x))?,
+                Term::BulletPrefix(pfx) => match pfx {
+                    BulletType::Dash => text(w, "-")?,
+                    BulletType::Star => text(w, "*")?,
+                },
                 Term::TaskPrefix(pfx) => {
                     let cb = |w: &mut W, checked: bool| {
                         let checked_s = if checked { " checked" } else { "" };

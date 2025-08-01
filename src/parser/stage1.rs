@@ -1,5 +1,5 @@
 use crate::parser::{
-    DocumentSt1, Indent, Line, StandardOptions, TaskFormat, TaskPrefix, TaskState, Term,
+    DocumentSt1, Indent, Line, StandardOptions, TaskFormat, TaskPrefix, TaskState, Term, BulletType
 };
 use std::collections::HashMap;
 
@@ -438,6 +438,10 @@ impl<'a> DocParser<'a> {
 
         let mut terms = Vec::new();
 
+        if let Some(pfx) = p.get_bullet_prefix() {
+            terms.push(Term::BulletPrefix(pfx));
+        }
+
         if let Some(pfx) = p.get_task_prefix() {
             terms.push(Term::TaskPrefix(pfx));
         }
@@ -552,6 +556,19 @@ impl<'a> DocParser<'a> {
         } else {
             None
         }
+    }
+
+    pub fn get_bullet_prefix(&mut self) -> Option<BulletType> {
+        let mut p = self.clone();
+        let type_ = match p.next()? {
+            '*' => BulletType::Star,
+            '-' => BulletType::Dash,
+            _ => return None
+        };
+        _ = p.peek().filter(|&c| is::inline_whitespace(c))?;
+
+        *self = p;
+        Some(type_)
     }
 
     pub fn get_task_prefix(&mut self) -> Option<TaskPrefix> {
