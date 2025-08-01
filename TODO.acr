@@ -1,0 +1,61 @@
+%:title Acrylic parser to-do list
+
+Very meta to have the to-do list in the format itself hehe
+
+Finished %-fold
+  (x) Inline LaTeX math support (`${}`)
+  (x) HTML - Don't use `<br/>` for line separation. Instead use `<p>` and two classes for the two kinds of line spacing.
+  (x) KaTeX - initial setup
+  (x) Parse "display math" (the one that's not inline - `$${}`)
+  (x) implement `$$:` and `$:` syntax
+  (x) Parse header
+  (x) Get indent option (default=2, and can be tab if chosen)
+  (x) implement inline *bold*, _italic_, _*bold-italic*_ and `code`
+  (x) Parse the rest of the document, with `indent` being the indent unit
+  (x) Parse error handling (at least error out! for the love of god)
+  (x) Turn this into an actual program
+  (x) Make `spaced` an attribute of lines (specially because the `:line-latex` rule can also be spaced sometimes!)
+  (x) Implement tasks
+  (x) HTML - escape sequences + proper output ( get it from https://github.com/yohannd1/yohannd1.github.io )
+  (x) Implement `%tags`
+  (x) Bug fix - comments followed by multiple `\n`s inhibits the spacing
+  (x) Bug fix (KaTeX) - display math lines need a little bit more space
+  (x) Implement folding via `%-fold`
+  (x) URL detection
+  (x) "Procedural" parsing with Rust (probably faster and... honestly, easier to debug and maintain)
+  (x) Bug fix - HTML output is taking dangerously long to generate longer pages
+    - This might not be a good thing to focus on for now.
+    - Fixed it with the rust rewrite
+  (x) bullet points (`*` and `-` at the start of lines)
+
+( ) Bug fix - folds eat up the spacing between them and the next element
+  - I can think of a quick fix for that, but it'll make things messy (the idea would be to just check whether a `div.spacing` is the last element of the fold and, if it is, just pop it off)
+
+( ) Menu on the top of the page (e.g. "fold all", "unfold all", "print" (which unfolds all, hides the menu and opens the print menu))
+
+( ) Implement `@functions{}`
+
+( ) Cuter CSS
+
+( ) KaTeX - automated download (maybe use npm? :sob:)
+
+( ) Think about how to handle escaping characters inside inline text variants (bold/italic/code) -- or maybe not? And instead just let them on `@bold`, `@codeinline` and `@italic` or whatever I call them
+  - maybe `@ib` for bold, `@ic` for code and `@ii` for italic (inline-bold, inline-code, ...)
+
+( ) Keyword arguments as `[kw {arg}]` and positional arguments as {}. Would make things easier for me. Scribble-based.
+
+( ) raw args?
+  @code:
+  @code[lang{Bom dia}]#{{
+    this is raw but left-trimmed data
+  }}
+  \@end
+  @end
+
+( ) Implement folding via `@fold`
+
+( ) Implement `@ref` (oh god that will be kind of tough)
+
+( ) optional JS tools (searching for tags, TODOs and incomplete ttasks)
+
+( ) automated tests. would be hella useful.

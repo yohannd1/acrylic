@@ -1,6 +1,10 @@
 %:title Hello, world!
 %:tags project
 
+This is a file with every possible language construct I can think of.
+
+---
+
 First line
 
 This is a tag: %my_tag
