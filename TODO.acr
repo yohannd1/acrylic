@@ -18,7 +18,7 @@ Finished %-fold
   (x) Implement tasks
   (x) HTML - escape sequences + proper output ( get it from https://github.com/yohannd1/yohannd1.github.io )
   (x) Implement `%tags`
-  (x) Bug fix - comments followed by multiple `\n`s inhibits the spacing
+  (x) Bug fix - comments followed by multiple @ci#{\n}s inhibits the spacing
   (x) Bug fix (KaTeX) - display math lines need a little bit more space
   (x) Implement folding via `%-fold`
   (x) URL detection
@@ -39,8 +39,9 @@ Finished %-fold
 
 ( ) KaTeX - automated download (maybe use npm? :sob:)
 
-( ) Think about how to handle escaping characters inside inline text variants (bold/italic/code) -- or maybe not? And instead just let them on `@bold`, `@codeinline` and `@italic` or whatever I call them
-  - maybe `@ib` for bold, `@ic` for code and `@ii` for italic (inline-bold, inline-code, ...)
+( ) Rethink bold/italic/inline-code
+  - I want to make it simple to parse, but still somewhat markdown-like.
+  - How to handle escaping characters in these? Maybe just have a function variant that supports them - `@bold`/`@b`, `@inlineCode`/`@ic` and `@italic`/`@i`
 
 ( ) Keyword arguments as `[kw {arg}]` and positional arguments as {}. Would make things easier for me. Scribble-based.
 
@@ -56,6 +57,6 @@ Finished %-fold
 
 ( ) Implement `@ref` (oh god that will be kind of tough)
 
-( ) optional JS tools (searching for tags, TODOs and incomplete ttasks)
+( ) Optional JS tools for the HTML backend (searching for tags, TODOs and incomplete tasks)
 
-( ) automated tests. would be hella useful.
+( ) Automated tests (one per parsing stage)
