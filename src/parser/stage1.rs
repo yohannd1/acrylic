@@ -1,7 +1,7 @@
-use crate::tree::{Indent, Line, PreDocument, StandardOptions, Term};
+use crate::parser::{Indent, Line, DocumentSt1, StandardOptions, Term};
 use std::collections::HashMap;
 
-pub fn parse(document_str: &str) -> Result<PreDocument, String> {
+pub fn parse(document_str: &str) -> Result<DocumentSt1, String> {
     let mut p = DocParser::new(document_str);
 
     let mut header = HashMap::new();
@@ -47,7 +47,7 @@ pub fn parse(document_str: &str) -> Result<PreDocument, String> {
         lines.push(line);
     }
 
-    Ok(PreDocument {
+    Ok(DocumentSt1 {
         header,
         options,
         lines,
@@ -369,9 +369,10 @@ impl<'a> DocParser<'a> {
         fn get_term(p: &mut DocParser, _terms_so_far: &[Term]) -> Result<TermResponse, String> {
             // TODO: task prefix (only when terms_so_far.len() == 0)
             // TODO: url parsing
+
             let result = if let Some(()) = p.get_inline_whitespace() {
                 TermResponse::Some(Term::InlineWhitespace)
-            } else if let Some(x) = p.get_comment() {
+            } else if let Some(_) = p.get_comment() {
                 TermResponse::Skip
             } else if let Some(x) = p.get_inline_code()? {
                 TermResponse::Some(Term::InlineCode(x))
@@ -403,7 +404,7 @@ impl<'a> DocParser<'a> {
             match get_term(&mut p, &terms) {
                 Ok(TermResponse::Some(t)) => terms.push(t),
                 Ok(TermResponse::None) => break,
-                Ok(TermResponse::Skip) => {},
+                Ok(TermResponse::Skip) => {}
                 Err(e) => return Err(make_error_message(&p, &e, &terms)),
             }
         }

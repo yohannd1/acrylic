@@ -1,16 +1,12 @@
 #![allow(dead_code)]
 
 mod parser;
-mod tree;
 
-use crate::{
-    parser::parse,
-    tree::{Node, Term},
-};
+use crate::parser::{parse, Node, Term};
 
 // TODO: preliminary HTML output
-// TODO: automatic testing for stage1 - conditions where each type of term parses
-// TODO: automatic testing for stage2 - mostly the indent and spacing stuff
+// TODO: make tests for stage1 - conditions where each type of term parses
+// TODO: make tests for stage2 - mostly the indent and spacing stuff
 
 fn main() {
     match begin() {
@@ -22,7 +18,7 @@ fn main() {
 fn begin() -> Result<(), String> {
     let args: Vec<String> = std::env::args().collect();
 
-    eprintln!("Size of Term: {:?}", std::mem::size_of::<tree::Term>());
+    eprintln!("Size of Term: {:?}", std::mem::size_of::<parser::Term>());
 
     eprintln!("Args: {:?}", args);
     if args.len() != 2 {

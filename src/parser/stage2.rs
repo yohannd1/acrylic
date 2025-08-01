@@ -1,6 +1,6 @@
-use crate::tree::{Document, Line, Node, PreDocument};
+use crate::parser::{DocumentSt2, Line, Node, DocumentSt1};
 
-pub fn parse(doc: PreDocument) -> Result<Document, String> {
+pub fn parse(doc: DocumentSt1) -> Result<DocumentSt2, String> {
     let mut nodes = Vec::new();
 
     // Stack with the current "hierarchy" of nodes being processed.
@@ -37,8 +37,6 @@ pub fn parse(doc: PreDocument) -> Result<Document, String> {
             }
             continue;
         }
-
-        eprintln!("GOT {line:?}, stack={stack:?}");
 
         if stack.len() == 0 {
             if line.indent == 0 {
@@ -79,7 +77,7 @@ pub fn parse(doc: PreDocument) -> Result<Document, String> {
         pop_to_parent(&mut nodes, &mut stack);
     }
 
-    Ok(Document {
+    Ok(DocumentSt2 {
         header: doc.header,
         options: doc.options,
         nodes: nodes,
