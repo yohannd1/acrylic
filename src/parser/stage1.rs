@@ -1,4 +1,6 @@
-use crate::parser::{DocumentSt1, Indent, Line, StandardOptions, Term};
+use crate::parser::{
+    DocumentSt1, Indent, Line, StandardOptions, TaskFormat, TaskPrefix, TaskState, Term,
+};
 use std::collections::HashMap;
 
 pub fn parse(document_str: &str) -> Result<DocumentSt1, String> {
@@ -225,10 +227,12 @@ impl<'a> DocParser<'a> {
         }
     }
 
+    /// Get the character currently under the cursor.
     fn peek(&self) -> Option<char> {
         self.source.chars().next()
     }
 
+    /// Advance forward (to the next character).
     fn step(&mut self) {
         let Some(c) = self.peek() else {
             return;
@@ -242,6 +246,13 @@ impl<'a> DocParser<'a> {
         }
 
         self.source = &self.source[c.len_utf8()..];
+    }
+
+    /// Get the current character and advance forward.
+    fn next(&mut self) -> Option<char> {
+        let c = self.peek()?;
+        self.step();
+        Some(c)
     }
 
     fn expect_and_skip(&mut self, expected: char) -> Option<()> {
@@ -349,7 +360,10 @@ impl<'a> DocParser<'a> {
             ret.push_str(line_to_end);
             ret.push('\n');
 
-            ret.push_str(&" ".repeat(prefix.len()));
+            for _ in 0..prefix.len() {
+                ret.push(' ');
+            }
+
             ret.push_str("^\n");
 
             ret.push_str(&format!(
@@ -380,41 +394,52 @@ impl<'a> DocParser<'a> {
             }
         };
 
-        enum TermResponse {
+        /// Response enum for the `get_term` function.
+        enum Resp {
             Some(Term),
             None,
             Skip,
         }
 
-        fn get_term(p: &mut DocParser, _terms_so_far: &[Term]) -> Result<TermResponse, String> {
-            // TODO: task prefix (only when terms_so_far.len() == 0)
+        fn get_term(p: &mut DocParser, terms_so_far: &[Term]) -> Result<Resp, String> {
+            // TODO: support bullet prefixes
+
+            let maybe_parse_task_prefix = |p: &mut DocParser| {
+                if terms_so_far.is_empty() {
+                    p.get_task_prefix()
+                } else {
+                    None
+                }
+            };
 
             let result = if let Some(()) = p.get_inline_whitespace() {
-                TermResponse::Some(Term::InlineWhitespace)
+                Resp::Some(Term::InlineWhitespace)
             } else if let Some(_) = p.get_comment() {
-                TermResponse::Skip
+                Resp::Skip
+            } else if let Some(x) = maybe_parse_task_prefix(p) {
+                Resp::Some(Term::TaskPrefix(x))
             } else if let Some(x) = p.get_inline_code()? {
-                TermResponse::Some(Term::InlineCode(x))
+                Resp::Some(Term::InlineCode(x))
             } else if let Some(x) = p.get_inline_bold()? {
-                TermResponse::Some(Term::InlineBold(x))
+                Resp::Some(Term::InlineBold(x))
             } else if let Some(x) = p.get_inline_italics()? {
-                TermResponse::Some(Term::InlineItalics(x))
+                Resp::Some(Term::InlineItalics(x))
             } else if let Some(x) = p.get_tag() {
-                TermResponse::Some(Term::Tag(x))
+                Resp::Some(Term::Tag(x))
             } else if let Some(x) = p.get_inline_math_a()? {
-                TermResponse::Some(Term::InlineMath(x))
+                Resp::Some(Term::InlineMath(x))
             } else if let Some(x) = p.get_inline_math_b()? {
-                TermResponse::Some(Term::InlineMath(x))
+                Resp::Some(Term::InlineMath(x))
             } else if let Some(x) = p.get_display_math_a()? {
-                TermResponse::Some(Term::DisplayMath(x))
+                Resp::Some(Term::DisplayMath(x))
             } else if let Some(x) = p.get_display_math_b()? {
-                TermResponse::Some(Term::DisplayMath(x))
+                Resp::Some(Term::DisplayMath(x))
             } else if let Some(x) = p.get_url() {
-                TermResponse::Some(Term::Url(x))
+                Resp::Some(Term::Url(x))
             } else if let Some(x) = p.get_word() {
-                TermResponse::Some(Term::Word(x))
+                Resp::Some(Term::Word(x))
             } else {
-                TermResponse::None
+                Resp::None
             };
 
             Ok(result)
@@ -423,9 +448,9 @@ impl<'a> DocParser<'a> {
         let mut terms = Vec::new();
         loop {
             match get_term(&mut p, &terms) {
-                Ok(TermResponse::Some(t)) => terms.push(t),
-                Ok(TermResponse::None) => break,
-                Ok(TermResponse::Skip) => {}
+                Ok(Resp::Some(t)) => terms.push(t),
+                Ok(Resp::None) => break,
+                Ok(Resp::Skip) => {}
                 Err(e) => return Err(make_error_message(&p, &e, &terms)),
             }
         }
@@ -531,6 +556,33 @@ impl<'a> DocParser<'a> {
         } else {
             None
         }
+    }
+
+    pub fn get_task_prefix(&mut self) -> Option<TaskPrefix> {
+        let mut p = self.clone();
+
+        let rest = |p: &mut Self, end: char| -> Option<TaskState> {
+            let state = match p.next()? {
+                ' ' => TaskState::Todo,
+                'x' | 'X' => TaskState::Done,
+                '-' => TaskState::Cancelled,
+                _ => return None,
+            };
+            if p.next()? == end {
+                Some(state)
+            } else {
+                None
+            }
+        };
+
+        let (format, state) = match p.next()? {
+            '[' => (TaskFormat::Square, rest(&mut p, ']')?),
+            '(' => (TaskFormat::Paren, rest(&mut p, ')')?),
+            _ => return None,
+        };
+
+        *self = p;
+        Some(TaskPrefix { format, state })
     }
 
     make_symetric_delimiter!(get_inline_code, '`');

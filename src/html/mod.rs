@@ -1,6 +1,6 @@
 //! HTML output backend.
 
-use crate::parser::{DocumentSt2, Node, Term};
+use crate::parser::{DocumentSt2, Node, Term, TaskState};
 use std::collections::HashMap;
 use std::io;
 
@@ -89,6 +89,8 @@ where
     W: io::Write,
 {
     // TODO: allow other types of errors on return + replace all related assert! and unreachable! calls
+    // TODO: write spacing after <details> tag if the last child (might do this on parser::stage2
+    // actually) has spacing
 
     let space_per_indent_em = 1.25;
 
@@ -99,7 +101,6 @@ where
             "style".into(),
             format!("margin-left: {:.2}em", indent as f32 * space_per_indent_em),
         );
-        // TODO: replace this by on-demand acr-i1 ... acr-in classes for smaller html
     }
 
     if let Some(Term::DisplayMath(_)) = node.contents.first() {
@@ -131,22 +132,34 @@ where
                 Term::InlineCode(x) => elem(w, "code", [], |w| text(w, x))?,
                 Term::InlineBold(x) => elem(w, "b", [], |w| text(w, x))?,
                 Term::InlineItalics(x) => elem(w, "i", [], |w| text(w, x))?,
-                Term::TaskPrefix { state, format } => elem(w, "span", [], |w| {
-                    text(w, &format!("TODO({state:?}, {format:?})"))
-                })?,
+                Term::TaskPrefix(pfx) => {
+                    let cb = |w: &mut W, checked: bool| {
+                        let checked_s = if checked { " checked" } else { "" };
+                        write!(w, r#"<input type="checkbox" disabled{checked_s}/>"#)
+                    };
+                    match pfx.state {
+                        TaskState::Todo => cb(w, false),
+                        TaskState::Done => cb(w, true),
+                        TaskState::Cancelled => cb(w, true),
+                    }
+                }?,
             }
         }
 
         Ok(())
     };
 
-    let is_fold = node.contents.iter().find(|x| {
-        if let Term::Tag(t) = x {
-            t == "-fold"
-        } else {
-            false
-        }
-    }).is_some();
+    let is_fold = node
+        .contents
+        .iter()
+        .find(|x| {
+            if let Term::Tag(t) = x {
+                t == "-fold"
+            } else {
+                false
+            }
+        })
+        .is_some();
 
     if is_fold {
         elem(w, "details", [], |w| {

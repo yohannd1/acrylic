@@ -11,10 +11,13 @@ pub enum Term {
     InlineCode(String),
     InlineBold(String),
     InlineItalics(String),
-    TaskPrefix {
-        state: TaskState,
-        format: TaskFormat,
-    }
+    TaskPrefix(TaskPrefix),
+}
+
+#[derive(Debug, Clone)]
+pub struct TaskPrefix {
+    pub state: TaskState,
+    pub format: TaskFormat,
 }
 
 #[derive(Debug, Clone, Copy)]
