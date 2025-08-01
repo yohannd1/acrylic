@@ -121,7 +121,6 @@ macro_rules! make_parse_math {
                         if c == '\n' {
                             literal_if!($end_on_bracket {
                             } else {
-                                p.step();
                                 break 'blk;
                             })
                         }
@@ -154,6 +153,13 @@ macro_rules! make_symetric_delimiter {
                 return Ok(None);
             }
 
+            match p.peek() {
+                Some('\n') => return Ok(None),
+                Some(' ') => return Ok(None),
+                None => return Ok(None),
+                _ => {}
+            }
+
             let mut ret = String::new();
             'blk: loop {
                 match p.peek() {
@@ -171,12 +177,12 @@ macro_rules! make_symetric_delimiter {
                                 p2.step();
                                 p = p2;
                             }
-                            Some(c) => return Err(format!("unknown escape sequence: \\{}", c)),
-                            None => return Err("unexpected end of line".into()),
+                            Some(c) => return Err(format!("(delimiter {:?}) unknown escape sequence: \\{}", $delim, c)),
+                            None => return Err(format!("(delimiter {:?}) unexpected end of line", $delim)),
                         }
                     }
                     Some('\n') | None => {
-                        return Err("unexpected end of line".into());
+                        return Err(format!("(delimiter {:?}) unexpected end of line", $delim));
                     }
                     Some(c) => {
                         ret.push(c);
@@ -227,7 +233,7 @@ impl<'a> DocParser<'a> {
             self.column += 1;
         }
 
-        self.source = &self.source[1..];
+        self.source = &self.source[c.len_utf8()..];
     }
 
     fn expect_and_skip(&mut self, expected: char) -> Option<()> {
