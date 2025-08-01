@@ -16,7 +16,7 @@ p {
 
 div.acr-spacing {
     margin-top: 0em;
-    margin-bottom: 1.5em;
+    margin-bottom: 0.7em;
 }
 
 summary:hover {

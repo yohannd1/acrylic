@@ -89,8 +89,6 @@ where
     W: io::Write,
 {
     // TODO: allow other types of errors on return + replace all related assert! and unreachable! calls
-    // TODO: write spacing after <details> tag if the last child (might do this on parser::stage2
-    // actually) has spacing
 
     let space_per_indent_em = 1.25;
 
