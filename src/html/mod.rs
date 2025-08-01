@@ -138,11 +138,32 @@ where
         Ok(())
     };
 
-    elem(w, "p", attrs_iter, write_fn)?;
-    write!(w, "\n")?;
+    let is_fold = node.contents.iter().find(|x| {
+        if let Term::Tag(t) = x {
+            t == "-fold"
+        } else {
+            false
+        }
+    }).is_some();
 
-    for child in &node.children {
-        write_html_node(w, child, indent + 1)?;
+    if is_fold {
+        elem(w, "details", [], |w| {
+            elem(w, "summary", attrs_iter, write_fn)?;
+            write!(w, "\n")?;
+
+            for child in &node.children {
+                write_html_node(w, child, indent + 1)?;
+            }
+
+            Ok(())
+        })?;
+    } else {
+        elem(w, "p", attrs_iter, write_fn)?;
+        write!(w, "\n")?;
+
+        for child in &node.children {
+            write_html_node(w, child, indent + 1)?;
+        }
     }
 
     if node.bottom_spacing {
@@ -150,18 +171,4 @@ where
     }
 
     Ok(())
-}
-
-fn print_node(node: &Node, indent: usize) {
-    for _ in 0..indent {
-        eprint!("  ");
-    }
-    eprintln!();
-    if node.bottom_spacing {
-        eprintln!("»");
-    }
-
-    for child in &node.children {
-        print_node(child, indent + 1);
-    }
 }

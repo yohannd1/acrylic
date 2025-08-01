@@ -388,7 +388,6 @@ impl<'a> DocParser<'a> {
 
         fn get_term(p: &mut DocParser, _terms_so_far: &[Term]) -> Result<TermResponse, String> {
             // TODO: task prefix (only when terms_so_far.len() == 0)
-            // TODO: url parsing
 
             let result = if let Some(()) = p.get_inline_whitespace() {
                 TermResponse::Some(Term::InlineWhitespace)
