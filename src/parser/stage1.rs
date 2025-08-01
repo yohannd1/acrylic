@@ -32,7 +32,7 @@ pub fn parse(document_str: &str) -> Result<DocumentSt1, String> {
 
     let title = header
         .remove("title")
-        .unwrap_or_else(|| format!("<No title>"));
+        .unwrap_or_else(String::new);
 
     let options = StandardOptions {
         indent,
