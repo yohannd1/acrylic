@@ -293,7 +293,7 @@ impl<'a> DocParser<'a> {
     }
 
     fn get_inline_whitespace(&mut self) -> Option<()> {
-        if self.count_while(Self::is_inline_whitespace) > 0 {
+        if self.count_while(is::inline_whitespace) > 0 {
             Some(())
         } else {
             None
@@ -301,7 +301,7 @@ impl<'a> DocParser<'a> {
     }
 
     fn skip_inline_whitespace(&mut self) {
-        _ = self.count_while(Self::is_inline_whitespace);
+        _ = self.count_while(is::inline_whitespace);
     }
 
     fn expect_line_end(&mut self) -> bool {
@@ -320,12 +320,12 @@ impl<'a> DocParser<'a> {
         p.expect_and_skip('%')?;
         p.expect_and_skip(':')?;
 
-        let key = p.collect(|c| !Self::is_inline_whitespace(c));
+        let key = p.collect(|c| !is::inline_whitespace(c));
         if key.len() == 0 {
             return None;
         }
 
-        if p.count_while(Self::is_inline_whitespace) == 0 {
+        if p.count_while(is::inline_whitespace) == 0 {
             return None;
         }
 
@@ -340,40 +340,41 @@ impl<'a> DocParser<'a> {
         Some((key, value))
     }
 
+    /// Make error message for a failed parse.
+    fn make_parse_error_msg(p: &DocParser, msg: &str, terms_so_far: &[Term]) -> String {
+        let mut ret = String::new();
+        ret.push_str(msg);
+        ret.push('\n');
+
+        // TODO: the entire line!! Maybe return the error info and show the error at the
+        // callsite, because it knows the start of the string from there.
+        let line_to_end = p
+            .source
+            .find('\n')
+            .map(|i| &p.source[..i])
+            .unwrap_or_else(|| p.source);
+
+        let prefix = format!("{} | ... ", p.line);
+        ret.push_str(&prefix);
+
+        ret.push_str(line_to_end);
+        ret.push('\n');
+
+        for _ in 0..prefix.len() {
+            ret.push(' ');
+        }
+
+        ret.push_str("^\n");
+
+        ret.push_str(&format!(
+            "Terms we managed to get in the line before the error: {:?}",
+            terms_so_far
+        ));
+
+        ret
+    }
+
     pub fn get_line(&mut self, options: &StandardOptions) -> Result<Option<Line>, String> {
-        let make_error_message = |p: &DocParser, msg: &str, terms_so_far: &[Term]| -> String {
-            let mut ret = String::new();
-            ret.push_str(msg);
-            ret.push('\n');
-
-            // TODO: the entire line!! Maybe return the error info and show the error at the
-            // callsite, because it knows the start of the string from there.
-            let line_to_end = p
-                .source
-                .find('\n')
-                .map(|i| &p.source[..i])
-                .unwrap_or_else(|| p.source);
-
-            let prefix = format!("{} | ... ", self.line);
-            ret.push_str(&prefix);
-
-            ret.push_str(line_to_end);
-            ret.push('\n');
-
-            for _ in 0..prefix.len() {
-                ret.push(' ');
-            }
-
-            ret.push_str("^\n");
-
-            ret.push_str(&format!(
-                "Terms we managed to get in the line before the error: {:?}",
-                terms_so_far
-            ));
-
-            ret
-        };
-
         if self.peek().is_none() {
             return Ok(None);
         }
@@ -401,23 +402,13 @@ impl<'a> DocParser<'a> {
             Skip,
         }
 
-        fn get_term(p: &mut DocParser, terms_so_far: &[Term]) -> Result<Resp, String> {
+        fn get_term(p: &mut DocParser) -> Result<Resp, String> {
             // TODO: support bullet prefixes
-
-            let maybe_parse_task_prefix = |p: &mut DocParser| {
-                if terms_so_far.is_empty() {
-                    p.get_task_prefix()
-                } else {
-                    None
-                }
-            };
 
             let result = if let Some(()) = p.get_inline_whitespace() {
                 Resp::Some(Term::InlineWhitespace)
             } else if let Some(_) = p.get_comment() {
                 Resp::Skip
-            } else if let Some(x) = maybe_parse_task_prefix(p) {
-                Resp::Some(Term::TaskPrefix(x))
             } else if let Some(x) = p.get_inline_code()? {
                 Resp::Some(Term::InlineCode(x))
             } else if let Some(x) = p.get_inline_bold()? {
@@ -446,12 +437,17 @@ impl<'a> DocParser<'a> {
         }
 
         let mut terms = Vec::new();
+
+        if let Some(pfx) = p.get_task_prefix() {
+            terms.push(Term::TaskPrefix(pfx));
+        }
+
         loop {
-            match get_term(&mut p, &terms) {
+            match get_term(&mut p) {
                 Ok(Resp::Some(t)) => terms.push(t),
                 Ok(Resp::None) => break,
                 Ok(Resp::Skip) => {}
-                Err(e) => return Err(make_error_message(&p, &e, &terms)),
+                Err(e) => return Err(Self::make_parse_error_msg(&p, &e, &terms)),
             }
         }
 
@@ -459,7 +455,7 @@ impl<'a> DocParser<'a> {
         p.skip_inline_whitespace();
 
         if !p.expect_line_end() {
-            return Err(make_error_message(
+            return Err(Self::make_parse_error_msg(
                 &p,
                 "failed to parse everything in the line!",
                 &terms,
@@ -474,7 +470,7 @@ impl<'a> DocParser<'a> {
     ///
     /// A word is a continuous sequence of non-whitespace characters.
     ///
-    /// It accepts a few escapable chars, as defined in [`Self::is_escapable_char`].
+    /// It accepts a few escapable chars, as defined in [`is::escapable_char`].
     pub fn get_word(&mut self) -> Option<String> {
         let mut p = self.clone();
 
@@ -489,7 +485,7 @@ impl<'a> DocParser<'a> {
                     p2.step();
 
                     match p2.peek() {
-                        Some(c) if Self::is_escapable_char(c) => {
+                        Some(c) if is::escapable_char(c) => {
                             ret.push(c);
                             p2.step();
                             p = p2;
@@ -497,7 +493,7 @@ impl<'a> DocParser<'a> {
                         _ => break 'blk,
                     }
                 }
-                Some(c) if Self::is_word_char(c) => {
+                Some(c) if is::word_char(c) => {
                     ret.push(c);
                     p.step();
                 }
@@ -522,7 +518,7 @@ impl<'a> DocParser<'a> {
         p.expect_and_skip('/')?;
         p.expect_and_skip('/')?;
         ret.push_str("://");
-        ret.extend(p.collect_at_least(1, Self::is_word_char)?.chars());
+        ret.extend(p.collect_at_least(1, is::word_char)?.chars());
 
         *self = p;
         Some(ret)
@@ -548,7 +544,7 @@ impl<'a> DocParser<'a> {
         let mut p = self.clone();
 
         p.expect_and_skip('%')?;
-        let ret = p.collect(|c| !Self::is_inline_whitespace(c) && c != '\n');
+        let ret = p.collect(|c| !is::inline_whitespace(c) && c != '\n');
 
         if ret.len() > 0 {
             *self = p;
@@ -593,22 +589,26 @@ impl<'a> DocParser<'a> {
     make_parse_math!(get_inline_math_b, expect_start: ['$', ':'], end_on_bracket: false);
     make_parse_math!(get_display_math_a, expect_start: ['$', '$', '{'], end_on_bracket: true);
     make_parse_math!(get_display_math_b, expect_start: ['$', '$', ':'], end_on_bracket: false);
+}
 
-    fn is_escapable_char(c: char) -> bool {
+mod is {
+    //! Collection of methods for checking a character.
+
+    pub fn escapable_char(c: char) -> bool {
         match c {
             '\\' | '@' | '$' | '%' | '*' | '_' | '`' => true,
             _ => false,
         }
     }
 
-    fn is_inline_whitespace(c: char) -> bool {
+    pub fn inline_whitespace(c: char) -> bool {
         match c {
             ' ' | '\t' => true,
             _ => false,
         }
     }
 
-    fn is_word_char(c: char) -> bool {
-        c != '\n' && !Self::is_inline_whitespace(c)
+    pub fn word_char(c: char) -> bool {
+        c != '\n' && !inline_whitespace(c)
     }
 }
