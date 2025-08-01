@@ -5,6 +5,7 @@ pub enum Term {
     InlineWhitespace,
     Word(String),
     Tag(String),
+    Url(String),
     InlineMath(String),
     DisplayMath(String),
     InlineCode(String),

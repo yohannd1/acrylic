@@ -1,4 +1,4 @@
-use crate::parser::{Indent, Line, DocumentSt1, StandardOptions, Term};
+use crate::parser::{DocumentSt1, Indent, Line, StandardOptions, Term};
 use std::collections::HashMap;
 
 pub fn parse(document_str: &str) -> Result<DocumentSt1, String> {
@@ -30,9 +30,7 @@ pub fn parse(document_str: &str) -> Result<DocumentSt1, String> {
         .map(|s| parse_tags(&s))
         .unwrap_or_else(|| Vec::new());
 
-    let title = header
-        .remove("title")
-        .unwrap_or_else(String::new);
+    let title = header.remove("title").unwrap_or_else(String::new);
 
     let options = StandardOptions {
         indent,
@@ -177,8 +175,18 @@ macro_rules! make_symetric_delimiter {
                                 p2.step();
                                 p = p2;
                             }
-                            Some(c) => return Err(format!("(delimiter {:?}) unknown escape sequence: \\{}", $delim, c)),
-                            None => return Err(format!("(delimiter {:?}) unexpected end of line", $delim)),
+                            Some(c) => {
+                                return Err(format!(
+                                    "(delimiter {:?}) unknown escape sequence: \\{}",
+                                    $delim, c
+                                ))
+                            }
+                            None => {
+                                return Err(format!(
+                                    "(delimiter {:?}) unexpected end of line",
+                                    $delim
+                                ))
+                            }
                         }
                     }
                     Some('\n') | None => {
@@ -254,13 +262,19 @@ impl<'a> DocParser<'a> {
         i
     }
 
-    fn collect_while(&mut self, pred: impl Fn(char) -> bool) -> String {
+    fn collect(&mut self, pred: impl Fn(char) -> bool) -> String {
         let mut ret = String::new();
         while let Some(c) = self.peek().filter(|&c| pred(c)) {
             ret.push(c);
             self.step();
         }
         ret
+    }
+
+    /// Does the same as [`collect`], but only returns `Some` if the amount of characters collected
+    /// is at least `n`.
+    fn collect_at_least(&mut self, n: usize, pred: impl Fn(char) -> bool) -> Option<String> {
+        Some(self.collect(pred)).filter(|x| x.len() >= n)
     }
 
     fn skip_newlines(&mut self) {
@@ -295,7 +309,7 @@ impl<'a> DocParser<'a> {
         p.expect_and_skip('%')?;
         p.expect_and_skip(':')?;
 
-        let key = p.collect_while(|c| !Self::is_inline_whitespace(c));
+        let key = p.collect(|c| !Self::is_inline_whitespace(c));
         if key.len() == 0 {
             return None;
         }
@@ -304,7 +318,7 @@ impl<'a> DocParser<'a> {
             return None;
         }
 
-        let value = p.collect_while(|c| c != '\n');
+        let value = p.collect(|c| c != '\n');
         if value.len() == 0 {
             return None;
         }
@@ -396,6 +410,8 @@ impl<'a> DocParser<'a> {
                 TermResponse::Some(Term::DisplayMath(x))
             } else if let Some(x) = p.get_display_math_b()? {
                 TermResponse::Some(Term::DisplayMath(x))
+            } else if let Some(x) = p.get_url() {
+                TermResponse::Some(Term::Url(x))
             } else if let Some(x) = p.get_word() {
                 TermResponse::Some(Term::Word(x))
             } else {
@@ -438,8 +454,6 @@ impl<'a> DocParser<'a> {
     pub fn get_word(&mut self) -> Option<String> {
         let mut p = self.clone();
 
-        let is_word_char = |c: char| c != '\n' && !Self::is_inline_whitespace(c);
-
         // TODO: error when it's not a valid entire word? like, it can't stop before a space or
         // sumthn. Or just go the forth-way and guarantee that it's still a word until you space
 
@@ -459,7 +473,7 @@ impl<'a> DocParser<'a> {
                         _ => break 'blk,
                     }
                 }
-                Some(c) if is_word_char(c) => {
+                Some(c) if Self::is_word_char(c) => {
                     ret.push(c);
                     p.step();
                 }
@@ -475,13 +489,28 @@ impl<'a> DocParser<'a> {
         }
     }
 
+    pub fn get_url(&mut self) -> Option<String> {
+        let mut p = self.clone();
+        let mut ret = String::new();
+
+        ret.extend(p.collect_at_least(1, |c| c.is_ascii_alphabetic())?.chars());
+        p.expect_and_skip(':')?;
+        p.expect_and_skip('/')?;
+        p.expect_and_skip('/')?;
+        ret.push_str("://");
+        ret.extend(p.collect_at_least(1, Self::is_word_char)?.chars());
+
+        *self = p;
+        Some(ret)
+    }
+
     pub fn get_comment(&mut self) -> Option<String> {
         let mut p = self.clone();
 
         p.expect_and_skip('%')?;
         p.expect_and_skip('%')?;
 
-        let ret = p.collect_while(|c| c != '\n');
+        let ret = p.collect(|c| c != '\n');
 
         if ret.len() > 0 {
             *self = p;
@@ -495,7 +524,7 @@ impl<'a> DocParser<'a> {
         let mut p = self.clone();
 
         p.expect_and_skip('%')?;
-        let ret = p.collect_while(|c| !Self::is_inline_whitespace(c) && c != '\n');
+        let ret = p.collect(|c| !Self::is_inline_whitespace(c) && c != '\n');
 
         if ret.len() > 0 {
             *self = p;
@@ -526,5 +555,9 @@ impl<'a> DocParser<'a> {
             ' ' | '\t' => true,
             _ => false,
         }
+    }
+
+    fn is_word_char(c: char) -> bool {
+        c != '\n' && !Self::is_inline_whitespace(c)
     }
 }

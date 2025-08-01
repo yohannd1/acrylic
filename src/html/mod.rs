@@ -97,7 +97,7 @@ where
             "style".into(),
             format!("margin-left: {:.2}em", indent as f32 * space_per_indent_em),
         );
-        // TODO: replace this by on-demand acr-i1 ... acr-in classes to use less space
+        // TODO: replace this by on-demand acr-i1 ... acr-in classes for smaller html
     }
 
     if let Some(Term::DisplayMath(_)) = node.contents.first() {
@@ -118,6 +118,7 @@ where
                     text(w, "%")?;
                     text(w, x)
                 })?,
+                Term::Url(x) => elem(w, "a", [("href", x.as_str())], |w| text(w, x))?,
                 Term::InlineMath(x) => {
                     elem(w, "span", [("class", "katex-inline")], |w| text(w, x))?
                 }
