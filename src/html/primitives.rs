@@ -1,4 +1,4 @@
-//! Contains functions for generating HTML primitives.
+//! Functions for generating HTML primitives (tags and text).
 
 use std::io;
 
@@ -31,26 +31,29 @@ where
     Ok(())
 }
 
-
 #[inline(always)]
 pub fn text(w: &mut impl io::Write, text: &str) -> io::Result<()> {
-    // FIXME: is this a bad hot loop? might be better if we just put it into a string, yeah...
+    let mut s = String::new();
+    s.reserve(text.len());
+
     for c in text.chars() {
         match c {
-            '&' => write!(w, "&amp;"),
-            '<' => write!(w, "&lt;"),
-            '>' => write!(w, "&gt;"),
-            '"' => write!(w, "&quot;"),
-            '\'' => write!(w, "&#39;"),
-            '`' => write!(w, "&#96;"),
-            _ => write!(w, "{c}"),
-        }?
+            '&' => s.push_str("&amp;"),
+            '<' => s.push_str("&lt;"),
+            '>' => s.push_str("&gt;"),
+            '"' => s.push_str("&quot;"),
+            '\'' => s.push_str("&#39;"),
+            '`' => s.push_str("&#96;"),
+            _ => s.push(c),
+        }
     }
 
-    Ok(())
+    write!(w, "{s}")
 }
 
 fn is_void_tag(tag: &str) -> bool {
+    // FIXME: improve performance here (hash table or something ig)
+
     match tag {
         "area" => true,
         "base" => true,
