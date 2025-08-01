@@ -1,64 +1,51 @@
 #![allow(dead_code)]
+#![deny(unused_must_use)]
 
+mod cli;
+mod html;
 mod parser;
 
-use crate::parser::{parse, Node, Term};
+use crate::cli::Backend;
+use crate::html::{write_html, HtmlOptions};
+use crate::parser::parse;
 
-// TODO: preliminary HTML output
 // TODO: make tests for stage1 - conditions where each type of term parses
 // TODO: make tests for stage2 - mostly the indent and spacing stuff
 
 fn main() {
-    match begin() {
+    match app() {
         Ok(()) => {}
-        Err(e) => eprintln!("error: {}", e),
+        Err(e) => {
+            if e.len() > 0 {
+                eprintln!("error: {}", e);
+            }
+            std::process::exit(1);
+        }
     }
 }
 
-fn begin() -> Result<(), String> {
+fn app() -> Result<(), String> {
     let args: Vec<String> = std::env::args().collect();
 
-    eprintln!("Size of Term: {:?}", std::mem::size_of::<parser::Term>());
+    let options = cli::parse_options(&args)?;
 
-    eprintln!("Args: {:?}", args);
-    if args.len() != 2 {
-        return Err("bad arguments.\nUsage: PROGNAME <FILE>".into());
-    }
-
-    let file_contents = std::fs::read_to_string(&args[1])
+    let file_contents = std::fs::read_to_string(options.input_path)
         .map_err(|e| format!("failed to open input file: {:?}", e))?;
 
     let result = parse(&file_contents)?;
-    for child in &result.nodes {
-        print_node(child, 0);
+
+    let mut file = std::fs::File::create(&options.output_path)
+        .map_err(|e| format!("failed to open file: {:?}", e))?;
+
+    match options.backend {
+        Backend::Html => {
+            let html_options = HtmlOptions {
+                katex_path: &options.katex_path,
+            };
+            write_html(&mut file, &result, &html_options)
+                .map_err(|e| format!("failed to write to file: {:?}", e))?;
+        }
     }
 
     Ok(())
-}
-
-fn print_node(node: &Node, indent: usize) {
-    for _ in 0..indent {
-        eprint!("  ");
-    }
-    for term in &node.contents {
-        match term {
-            Term::InlineWhitespace => eprint!(" "),
-            Term::Word(x) => eprint!("{x}"),
-            Term::Tag(x) => eprint!("%{x}"),
-            Term::InlineMath(x) => eprint!("${{{x}}}"),
-            Term::DisplayMath(x) => eprint!("$${{{x}}}"),
-            Term::InlineCode(x) => eprint!("`{x}`"),
-            Term::InlineBold(x) => eprint!("*{x}*"),
-            Term::InlineItalics(x) => eprint!("_{x}_"),
-            Term::TaskPrefix { state, format } => eprint!("{state:?} {format:?}"),
-        }
-    }
-    eprintln!();
-    if node.bottom_spacing {
-        eprintln!("»");
-    }
-
-    for child in &node.children {
-        print_node(child, indent + 1);
-    }
 }
