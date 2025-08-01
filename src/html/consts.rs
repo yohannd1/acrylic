@@ -68,14 +68,14 @@ document.addEventListener("DOMContentLoaded", function() {
     };
 
     for (let e of document.querySelectorAll(".katex-inline")) {
-        const text = e.innerText;
-        e.innerText = "";
+        const text = e.textContent;
+        e.textContent = "";
         katex.render(text, e, {displayMode: false, ...opts});
     }
 
     for (let e of document.querySelectorAll(".katex-display")) {
-        const text = e.innerText;
-        e.innerText = "";
+        const text = e.textContent;
+        e.textContent = "";
         katex.render(text, e, {displayMode: true, fleqn: true, ...opts});
     }
 });
