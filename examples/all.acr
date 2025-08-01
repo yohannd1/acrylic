@@ -1,17 +1,23 @@
 %:title Hello, world!
 %:tags project
 
+This is a file with every possible language construct I can think of.
+
+---
+
 First line
 
 This is a tag: %my_tag
 
-$${ S(n) = \sum_{i=0}^n i^2 }
-
-$$: \int_a^b f(x) dx
-
 This is simple inline math: ${ x_2 + \sum_{n=0}^{\infty} a_n }
 
-inline math 2: $: x^2
+Inline math II -> $: x^2
+
+This is display math:
+$${ S(n) = \sum_{i=0}^n i^2 }
+
+Another method of doing display math:
+$$: \int_a^b f(x) dx
 
 mmyeah
 dshao
@@ -21,9 +27,8 @@ This is a backslash: \\
 This is *bold text*, and these are \*escaped asterisks\*.
 This is _italic text_, and these are \_escaped underscores\_.
 This is `inline code`, and these are \`escaped backticks\`.
-And this is *_bold-italic_*. And this is _*italic-bold*_ (eh same thing)
 
-This is *bold text with an espaced \* inside it*.
+This is *bold text with an escaped \* inside it*.
 
 Second line
 
@@ -39,7 +44,7 @@ Second line
   $$: \int_a^b f(x) dx = \lim_{n \to \infty} \sum_{i=0}^n f(x_i) \Delta x
   Where ${ \Delta x = \frac {b-a} 2 } and ${ x_i = \Delta x i }
 
-Here are some random stray characters: * $ _ %
+Here are some random stray characters: \* \$ \_ \%
 
 ( ) This is a task
 (x) This is a finished task
