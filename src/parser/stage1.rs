@@ -1,5 +1,5 @@
 use crate::parser::{
-    DocumentSt1, Indent, Line, StandardOptions, TaskFormat, TaskPrefix, TaskState, Term, BulletType
+    BulletType, DocumentSt1, Indent, Line, StandardOptions, TaskFormat, TaskPrefix, TaskState, Term,
 };
 use std::collections::HashMap;
 
@@ -563,7 +563,7 @@ impl<'a> DocParser<'a> {
         let type_ = match p.next()? {
             '*' => BulletType::Star,
             '-' => BulletType::Dash,
-            _ => return None
+            _ => return None,
         };
         _ = p.peek().filter(|&c| is::inline_whitespace(c))?;
 
@@ -608,8 +608,9 @@ impl<'a> DocParser<'a> {
     make_parse_math!(get_display_math_b, expect_start: ['$', '$', ':'], end_on_bracket: false);
 }
 
+/// Collection of methods for checking a character.
 mod is {
-    //! Collection of methods for checking a character.
+    use super::is;
 
     pub fn escapable_char(c: char) -> bool {
         match c {
@@ -626,6 +627,25 @@ mod is {
     }
 
     pub fn word_char(c: char) -> bool {
-        c != '\n' && !inline_whitespace(c)
+        c != '\n' && !is::inline_whitespace(c)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Term::*, *};
+
+    #[test]
+    fn simple_lines() {
+        assert_eq!(
+            vec![
+                Word("foo".to_string()),
+                InlineWhitespace,
+                Word("bar".to_string()),
+                InlineWhitespace,
+                Word("baz".to_string())
+            ],
+            parse("foo bar baz").unwrap().lines[0].terms
+        );
     }
 }

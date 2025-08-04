@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Term {
     InlineWhitespace,
     Word(String),
@@ -15,45 +15,45 @@ pub enum Term {
     BulletPrefix(BulletType),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BulletType {
     Dash,
     Star,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TaskPrefix {
     pub state: TaskState,
     pub format: TaskFormat,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TaskState {
     Todo,
     Done,
     Cancelled,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TaskFormat {
     Paren,
     Square,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Indent {
     Tab,
     Space(usize),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StandardOptions {
     pub indent: Indent,
     pub tags: Vec<String>,
     pub title: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Line {
     pub indent: usize,
     pub terms: Vec<Term>,
