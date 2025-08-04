@@ -34,6 +34,9 @@ TODO: talk about the resulting binary, name it correctly (probably
 `acr-parse` or something like that?), mention testing (which I didn't
 start yet...)
 
+Note that there are no dependencies other than rustc/cargo at the
+moment. I'm trying to be very minimal on dependencies at the moment.
+
 ## why "acrylic"?
 
 I was thinking of a name and the word came to mind. It works as an
