@@ -522,7 +522,7 @@ impl<'a> DocParser<'a> {
         p.expect_and_skip('/')?;
         p.expect_and_skip('/')?;
         ret.push_str("://");
-        ret.extend(p.collect_at_least(1, is::word_char)?.chars());
+        ret.extend(p.collect_at_least(1, |c| !is::inline_whitespace(c) && c != '\n')?.chars());
 
         *self = p;
         Some(ret)
@@ -627,7 +627,10 @@ mod is {
     }
 
     pub fn word_char(c: char) -> bool {
-        c != '\n' && !is::inline_whitespace(c)
+        match c {
+            '\n' | ' ' | '\t' | '*' | '`' | '$' | '%' => false,
+            _ => true,
+        }
     }
 }
 
