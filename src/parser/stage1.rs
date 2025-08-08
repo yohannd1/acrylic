@@ -282,7 +282,7 @@ impl<'a> DocParser<'a> {
         ret
     }
 
-    /// Does the same as [`collect`], but only returns `Some` if the amount of characters collected
+    /// Does the same as [`Self::collect`], but only returns `Some` if the amount of characters collected
     /// is at least `n`.
     fn collect_at_least(&mut self, n: usize, pred: impl Fn(char) -> bool) -> Option<String> {
         Some(self.collect(pred)).filter(|x| x.len() >= n)
@@ -650,5 +650,25 @@ mod tests {
             ],
             parse("foo bar baz").unwrap().lines[0].terms
         );
+    }
+
+    fn should_parse(should: bool, string: &str) {
+        if should {
+            assert!(parse(string).is_ok(), "failed to parse when it should: {string:?}");
+        } else {
+            assert!(parse(string).is_err(), "succesfully parsed when it shouldn't: {string:?}");
+        }
+    }
+
+    #[test]
+    fn good_and_bad_syntax() {
+        should_parse(true, "hello world my name is");
+        should_parse(true, "this is some ${math}");
+        should_parse(true, "this is some (${math} inside parenthesis)");
+        should_parse(true, "I have $5.00"); // FIXME: make this work!
+
+        // incomplete parses
+        should_parse(false, "foo bar %");
+        should_parse(false, "foo bar $");
     }
 }
