@@ -1,7 +1,8 @@
 pub const DEFAULT_STYLE: &'static str = r#"
 :root {
-    --col-fg-alt: #555;
+    --col-fg-alt: #555555;
     --col-bg-alt: #FAFAFC;
+    --col-bold: #2277DD;
 }
 
 body {
@@ -12,6 +13,10 @@ body {
 p {
     margin-top: 0em;
     margin-bottom: 0.1em;
+}
+
+b {
+    color: var(--col-bold);
 }
 
 div.acr-spacing {
