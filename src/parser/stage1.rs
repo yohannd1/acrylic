@@ -144,69 +144,6 @@ macro_rules! make_parse_math {
     }
 }
 
-macro_rules! make_symetric_delimiter {
-    ($fn_name:ident, $delim:literal) => {
-        pub fn $fn_name(&mut self) -> Result<Option<String>, String> {
-            let mut p = self.clone();
-
-            if p.expect_and_skip($delim).is_none() {
-                return Ok(None);
-            }
-
-            match p.peek() {
-                Some('\n') => return Ok(None),
-                Some(' ') => return Ok(None),
-                None => return Ok(None),
-                _ => {}
-            }
-
-            let mut ret = String::new();
-            'blk: loop {
-                match p.peek() {
-                    Some($delim) => {
-                        p.step();
-                        break 'blk;
-                    }
-                    Some('\\') => {
-                        let mut p2 = p.clone();
-                        p2.step();
-
-                        match p2.peek() {
-                            Some($delim) => {
-                                ret.push($delim);
-                                p2.step();
-                                p = p2;
-                            }
-                            Some(c) => {
-                                return Err(format!(
-                                    "(delimiter {:?}) unknown escape sequence: \\{}",
-                                    $delim, c
-                                ))
-                            }
-                            None => {
-                                return Err(format!(
-                                    "(delimiter {:?}) unexpected end of line",
-                                    $delim
-                                ))
-                            }
-                        }
-                    }
-                    Some('\n') | None => {
-                        return Err(format!("(delimiter {:?}) unexpected end of line", $delim));
-                    }
-                    Some(c) => {
-                        ret.push(c);
-                        p.step();
-                    }
-                }
-            }
-
-            *self = p;
-            Ok(Some(ret))
-        }
-    };
-}
-
 #[derive(Debug, Clone)]
 struct DocParser<'a> {
     line: u32,
@@ -409,11 +346,11 @@ impl<'a> DocParser<'a> {
                 Resp::Some(Term::InlineWhitespace)
             } else if let Some(_) = p.get_comment() {
                 Resp::Skip
-            } else if let Some(x) = p.get_inline_code()? {
+            } else if let Some(x) = p.get_symmetric_delimiter('`')? {
                 Resp::Some(Term::InlineCode(x))
-            } else if let Some(x) = p.get_inline_bold()? {
+            } else if let Some(x) = p.get_symmetric_delimiter('*')? {
                 Resp::Some(Term::InlineBold(x))
-            } else if let Some(x) = p.get_inline_italics()? {
+            } else if let Some(x) = p.get_symmetric_delimiter('_')? {
                 Resp::Some(Term::InlineItalics(x))
             } else if let Some(x) = p.get_tag() {
                 Resp::Some(Term::Tag(x))
@@ -522,7 +459,10 @@ impl<'a> DocParser<'a> {
         p.expect_and_skip('/')?;
         p.expect_and_skip('/')?;
         ret.push_str("://");
-        ret.extend(p.collect_at_least(1, |c| !is::inline_whitespace(c) && c != '\n')?.chars());
+        ret.extend(
+            p.collect_at_least(1, |c| !is::inline_whitespace(c) && c != '\n')?
+                .chars(),
+        );
 
         *self = p;
         Some(ret)
@@ -598,9 +538,62 @@ impl<'a> DocParser<'a> {
         Some(TaskPrefix { format, state })
     }
 
-    make_symetric_delimiter!(get_inline_code, '`');
-    make_symetric_delimiter!(get_inline_bold, '*');
-    make_symetric_delimiter!(get_inline_italics, '_');
+    #[inline(always)]
+    pub fn get_symmetric_delimiter(&mut self, delim: char) -> Result<Option<String>, String> {
+        let mut p = self.clone();
+
+        if p.expect_and_skip(delim).is_none() {
+            return Ok(None);
+        }
+
+        match p.peek() {
+            Some('\n') => return Ok(None),
+            Some(' ') => return Ok(None),
+            None => return Ok(None),
+            _ => {}
+        }
+
+        let mut ret = String::new();
+        'blk: loop {
+            match p.peek() {
+                Some(x) if x == delim => {
+                    p.step();
+                    break 'blk;
+                }
+                Some('\\') => {
+                    let mut p2 = p.clone();
+                    p2.step();
+
+                    match p2.peek() {
+                        Some(x) if x == delim => {
+                            ret.push(x);
+                            p2.step();
+                            p = p2;
+                        }
+                        Some(c) => {
+                            return Err(format!(
+                                "(delimiter {:?}) unknown escape sequence: \\{}",
+                                delim, c
+                            ))
+                        }
+                        None => {
+                            return Err(format!("(delimiter {:?}) unexpected end of line", delim))
+                        }
+                    }
+                }
+                Some('\n') | None => {
+                    return Err(format!("(delimiter {:?}) unexpected end of line", delim));
+                }
+                Some(c) => {
+                    ret.push(c);
+                    p.step();
+                }
+            }
+        }
+
+        *self = p;
+        Ok(Some(ret))
+    }
 
     make_parse_math!(get_inline_math_a, expect_start: ['$', '{'], end_on_bracket: true);
     make_parse_math!(get_inline_math_b, expect_start: ['$', ':'], end_on_bracket: false);
@@ -654,9 +647,15 @@ mod tests {
 
     fn should_parse(should: bool, string: &str) {
         if should {
-            assert!(parse(string).is_ok(), "failed to parse when it should: {string:?}");
+            assert!(
+                parse(string).is_ok(),
+                "failed to parse when it should: {string:?}"
+            );
         } else {
-            assert!(parse(string).is_err(), "succesfully parsed when it shouldn't: {string:?}");
+            assert!(
+                parse(string).is_err(),
+                "succesfully parsed when it shouldn't: {string:?}"
+            );
         }
     }
 
