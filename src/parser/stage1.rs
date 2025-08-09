@@ -278,34 +278,42 @@ impl<'a> DocParser<'a> {
     }
 
     /// Make error message for a failed parse.
-    fn make_parse_error_msg(p: &DocParser, msg: &str, terms_so_far: &[Term]) -> String {
+    fn make_parse_error_msg(
+        start_p: &DocParser,
+        err_p: &DocParser,
+        msg: &str,
+        terms_so_far: &[Term],
+    ) -> String {
+        // TODO: improve this. not efficient at all... maybe add a DocParser::has_same_ptr to
+        // compare start_p and err_p?
+
         let mut ret = String::new();
         ret.push_str(msg);
         ret.push('\n');
 
-        // TODO: the entire line!! Maybe return the error info and show the error at the
-        // callsite, because it knows the start of the string from there.
-        let line_to_end = p
-            .source
-            .find('\n')
-            .map(|i| &p.source[..i])
-            .unwrap_or_else(|| p.source);
+        fn seek_to_line_end(s: &str) -> &str {
+            s.find('\n')
+                .map(|i| &s[..i])
+                .unwrap_or(s)
+        }
 
-        let prefix = format!("{} | ... ", p.line);
+        let line_to_end = seek_to_line_end(start_p.source);
+        let err_margin = line_to_end.len() - seek_to_line_end(err_p.source).len();
+
+        let prefix = format!("{:2} | ", start_p.line);
         ret.push_str(&prefix);
 
         ret.push_str(line_to_end);
         ret.push('\n');
 
-        for _ in 0..prefix.len() {
+        for _ in 0..(prefix.len() + err_margin) {
             ret.push(' ');
         }
 
         ret.push_str("^\n");
 
         ret.push_str(&format!(
-            "Terms we managed to get in the line before the error: {:?}",
-            terms_so_far
+            "Succesfully parsed before (in the line): {terms_so_far:?}"
         ));
 
         ret
@@ -386,7 +394,7 @@ impl<'a> DocParser<'a> {
                 Ok(Resp::Some(t)) => terms.push(t),
                 Ok(Resp::None) => break,
                 Ok(Resp::Skip) => {}
-                Err(e) => return Err(Self::make_parse_error_msg(&p, &e, &terms)),
+                Err(e) => return Err(Self::make_parse_error_msg(self, &p, &e, &terms)),
             }
         }
 
@@ -395,8 +403,9 @@ impl<'a> DocParser<'a> {
 
         if !p.expect_line_end() {
             return Err(Self::make_parse_error_msg(
+                self,
                 &p,
-                "failed to parse everything in the line!",
+                "failed to parse entire line",
                 &terms,
             ));
         }
@@ -436,7 +445,9 @@ impl<'a> DocParser<'a> {
                     p.step();
                     first_char = false;
                 }
-                Some(c) if first_char && (c == '$' || c == '%' || c == '*' || c == '_' || c == '`') => {
+                Some(c)
+                    if first_char && (c == '$' || c == '%' || c == '*' || c == '_' || c == '`') =>
+                {
                     ret.push(c);
                     p.step();
                     first_char = false;
@@ -606,8 +617,6 @@ impl<'a> DocParser<'a> {
 
 /// Collection of methods for checking a character.
 mod is {
-    use super::is;
-
     pub fn escapable_char(c: char) -> bool {
         match c {
             '\\' | '@' | '$' | '%' | '*' | '_' | '`' => true,
