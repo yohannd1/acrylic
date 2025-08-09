@@ -8,6 +8,7 @@ mod parser;
 use crate::cli::{CliArg, CliOption, CliParser};
 use crate::html::{write_html, HtmlOptions};
 use crate::parser::parse;
+use std::io::Write;
 use std::path::PathBuf;
 
 // TODO: make tests for stage1 - conditions where each type of term parses
@@ -30,6 +31,7 @@ pub struct Options {
 #[derive(Debug, Clone, Copy)]
 pub enum Backend {
     Html,
+    Debug,
 }
 
 fn main() {
@@ -63,6 +65,10 @@ fn app(args: &[String]) -> Result<(), String> {
                 katex_path: &options.katex_path,
             };
             write_html(&mut file, &result, &html_options)
+                .map_err(|e| format!("failed to write to file: {:?}", e))?;
+        }
+        Backend::Debug => {
+            write!(&mut file, "{result:?}")
                 .map_err(|e| format!("failed to write to file: {:?}", e))?;
         }
     }
@@ -100,11 +106,9 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
 
     p.parse_args(&args[1..])?;
 
-    let backend = match p
-        .get_option("--backend")
-        .and_then(|x| x.value.as_deref())
-    {
+    let backend = match p.get_option("--backend").and_then(|x| x.value.as_deref()) {
         Some("html") | None => Backend::Html,
+        Some("debug") => Backend::Debug,
         Some(x) => return Err(p.error_help(format!("Unknown backend {x:?}"))),
     };
 
@@ -113,19 +117,12 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
         .and_then(|x| x.value.clone())
         .unwrap_or_else(String::new);
 
-    let input_path = match p
-        .get_arg("FILE")
-        .and_then(|x| x.value.as_deref())
-        .unwrap()
-    {
+    let input_path = match p.get_arg("FILE").and_then(|x| x.value.as_deref()).unwrap() {
         "-" => PathBuf::from("/dev/stdin".to_string()),
         other => PathBuf::from(other),
     };
 
-    let output_path = match p
-        .get_option("--output")
-        .and_then(|x| x.value.as_deref())
-    {
+    let output_path = match p.get_option("--output").and_then(|x| x.value.as_deref()) {
         Some("-") | None => PathBuf::from("/dev/stdout"),
         Some(other) => PathBuf::from(other),
     };
