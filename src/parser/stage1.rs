@@ -349,7 +349,7 @@ impl<'a> DocParser<'a> {
 
         fn get_term(p: &mut DocParser) -> Result<Resp, String> {
             let result = if let Some(()) = p.get_inline_whitespace() {
-                Resp::Some(Term::InlineWhitespace)
+                Resp::Some(Term::Space)
             } else if let Some(_) = p.get_comment() {
                 Resp::Skip
             } else if let Some(x) = p.get_symmetric_delimiter('`')? {
@@ -648,9 +648,9 @@ mod tests {
         assert_eq!(
             vec![
                 Word("foo".to_string()),
-                InlineWhitespace,
+                Space,
                 Word("bar".to_string()),
-                InlineWhitespace,
+                Space,
                 Word("baz".to_string())
             ],
             parse("foo bar baz").unwrap().lines[0].terms

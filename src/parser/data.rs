@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
-    InlineWhitespace,
-    Word(String),
+    Space,
+    Word(String), // TODO: rename to WordPart (as there can be adjacent ones)
     Tag(String),
     Url(String),
     InlineMath(String),

@@ -113,7 +113,7 @@ where
     let write_fn = |w: &mut W| {
         for (i, term) in node.contents.iter().enumerate() {
             match term {
-                Term::InlineWhitespace => write!(w, " ")?,
+                Term::Space => write!(w, " ")?,
                 Term::Word(x) => write!(w, "{x}")?,
                 Term::Tag(x) => elem(w, "small", [], |w| {
                     text(w, "%")?;
