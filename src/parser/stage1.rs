@@ -74,7 +74,7 @@ macro_rules! make_parse_math {
                 }
             }
 
-            let mut bracket_stack_size: usize = 0;
+            let mut bracket_stack_size: usize = 1;
 
             let mut ret = String::new();
             'blk: loop {
@@ -340,8 +340,6 @@ impl<'a> DocParser<'a> {
         }
 
         fn get_term(p: &mut DocParser) -> Result<Resp, String> {
-            // TODO: support bullet prefixes
-
             let result = if let Some(()) = p.get_inline_whitespace() {
                 Resp::Some(Term::InlineWhitespace)
             } else if let Some(_) = p.get_comment() {
@@ -415,9 +413,7 @@ impl<'a> DocParser<'a> {
     pub fn get_word(&mut self) -> Option<String> {
         let mut p = self.clone();
 
-        // TODO: error when it's not a valid entire word? like, it can't stop before a space or
-        // sumthn. Or just go the forth-way and guarantee that it's still a word until you space
-
+        let mut first_char = true;
         let mut ret = String::new();
         'blk: loop {
             match p.peek() {
@@ -430,6 +426,7 @@ impl<'a> DocParser<'a> {
                             ret.push(c);
                             p2.step();
                             p = p2;
+                            first_char = false;
                         }
                         _ => break 'blk,
                     }
@@ -437,6 +434,12 @@ impl<'a> DocParser<'a> {
                 Some(c) if is::word_char(c) => {
                     ret.push(c);
                     p.step();
+                    first_char = false;
+                }
+                Some(c) if first_char && (c == '$' || c == '%' || c == '*' || c == '_' || c == '`') => {
+                    ret.push(c);
+                    p.step();
+                    first_char = false;
                 }
                 _ => break 'blk,
             }
@@ -664,10 +667,12 @@ mod tests {
         should_parse(true, "hello world my name is");
         should_parse(true, "this is some ${math}");
         should_parse(true, "this is some (${math} inside parenthesis)");
-        should_parse(true, "I have $5.00"); // FIXME: make this work!
+        should_parse(true, "I have $5.00");
+        should_parse(true, "foo bar %");
+        should_parse(true, "foo bar $");
 
-        // incomplete parses
-        should_parse(false, "foo bar %");
-        should_parse(false, "foo bar $");
+        should_parse(true, "${5 + 8}");
+        should_parse(false, "${5 + 8");
+        should_parse(false, "${{5 + 8}");
     }
 }
