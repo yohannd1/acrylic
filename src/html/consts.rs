@@ -1,8 +1,16 @@
 pub const DEFAULT_STYLE: &'static str = r#"
 :root {
     --col-fg-alt: #555555;
-    --col-bg-alt: #FAFAFC;
-    --col-bold: #2277DD;
+
+    --col-bg: #FFFFFF;
+    --col-bg-alt: #EEEEEE;
+
+    --col-emphasis: #DF5273;
+    --col-href: #2277DD;
+}
+
+html {
+    background-color: var(--col-bg);
 }
 
 body {
@@ -16,7 +24,16 @@ p {
 }
 
 b {
-    color: var(--col-bold);
+    color: var(--col-emphasis);
+}
+
+a {
+    color: var(--col-href);
+}
+
+span.acr-tag {
+    color: var(--col-emphasis);
+    font-size: 1.0em;
 }
 
 div.acr-spacing {

@@ -115,7 +115,7 @@ where
             match term {
                 Term::Space => write!(w, " ")?,
                 Term::Word(x) => write!(w, "{x}")?,
-                Term::Tag(x) => elem(w, "small", [], |w| {
+                Term::Tag(x) => elem(w, "span", [("class", "acr-tag")], |w| {
                     text(w, "%")?;
                     text(w, x)
                 })?,
