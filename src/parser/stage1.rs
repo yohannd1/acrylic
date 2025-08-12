@@ -87,8 +87,12 @@ macro_rules! make_parse_math {
                     Some('}') => {
                         if bracket_stack_size > 0 {
                             bracket_stack_size -= 1;
-                            ret.push('}');
                             p.step();
+                            if bracket_stack_size == 0 {
+                                break 'blk;
+                            } else {
+                                ret.push('}');
+                            }
                         } else {
                             literal_if!($end_on_bracket {
                                 p.step();
@@ -292,9 +296,7 @@ impl<'a> DocParser<'a> {
         ret.push('\n');
 
         fn seek_to_line_end(s: &str) -> &str {
-            s.find('\n')
-                .map(|i| &s[..i])
-                .unwrap_or(s)
+            s.find('\n').map(|i| &s[..i]).unwrap_or(s)
         }
 
         let line_to_end = seek_to_line_end(start_p.source);
@@ -643,17 +645,45 @@ mod is {
 mod tests {
     use super::{Term::*, *};
 
+    fn parse_single_line(x: &str) -> Vec<Term> {
+        let result = parse(x).unwrap();
+        assert_eq!(result.lines.len(), 1);
+        return result.lines[0].terms.clone(); // FIXME: why can't I just move it out?
+    }
+
+    macro_rules! assert_terms {
+        ($terms:expr, [$($ps:pat),+]) => {
+            let var = $terms;
+            assert_terms!(var, i: 0, [$($ps),+]);
+        };
+        ($terms:expr, i: $i:expr, [$p:pat]) => {
+            let term = $terms.get($i);
+            if !matches!(term, Some($p)) {
+                panic!("(at index {}) expected {}, got {:?}", $i, stringify!(Some($p)), term);
+            }
+        };
+        ($terms:expr, i: $i:expr, [$head:pat, $($tail:pat),+]) => {
+            assert_terms!($terms, i: $i, [$head]);
+            assert_terms!($terms, i: $i + 1, [$($tail),+]);
+        };
+    }
+
+    #[test]
+    fn basic_assert_terms() {
+        let x = &[Space, Space, Word("".to_string())];
+        assert_terms!(x, [Space, Space, Word(_)]);
+    }
+
     #[test]
     fn simple_lines() {
-        assert_eq!(
-            vec![
-                Word("foo".to_string()),
-                Space,
-                Word("bar".to_string()),
-                Space,
-                Word("baz".to_string())
-            ],
-            parse("foo bar baz").unwrap().lines[0].terms
+        assert_terms!(
+            parse_single_line("foo bar baz"),
+            [Word(_), Space, Word(_), Space, Word(_)]
+        );
+
+        assert_terms!(
+            parse_single_line("foo ${bar} baz"),
+            [Word(_), Space, InlineMath(_), Space, Word(_)]
         );
     }
 
