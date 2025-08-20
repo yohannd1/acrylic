@@ -1,5 +1,6 @@
 use crate::parser::{
-    BulletType, DocumentSt1, Indent, Line, StandardOptions, TaskFormat, TaskPrefix, TaskState, Term,
+    BulletType, DocumentSt1, FuncCall, Indent, Line, StandardOptions, TaskFormat, TaskPrefix,
+    TaskState, Term,
 };
 use std::collections::HashMap;
 
@@ -362,6 +363,8 @@ impl<'a> DocParser<'a> {
                 Resp::Some(Term::InlineItalics(x))
             } else if let Some(x) = p.get_tag() {
                 Resp::Some(Term::Tag(x))
+            } else if let Some(x) = p.get_func_call() {
+                Resp::Some(Term::FuncCall(x))
             } else if let Some(x) = p.get_inline_math_a()? {
                 Resp::Some(Term::InlineMath(x))
             } else if let Some(x) = p.get_inline_math_b()? {
@@ -464,6 +467,71 @@ impl<'a> DocParser<'a> {
         } else {
             None
         }
+    }
+
+    pub fn get_func_call(&mut self) -> Option<FuncCall> {
+        fn get_indent(parser: &mut DocParser) -> Option<String> {
+            let mut p = parser.clone();
+            let mut ret = String::new();
+
+            ret.extend(p.collect_at_least(1, |c| c.is_ascii_alphabetic())?.chars());
+            ret.extend(p.collect(|c| c.is_ascii_alphanumeric()).chars());
+
+            *parser = p;
+            Some(ret)
+        }
+
+        fn get_escaped_char(parser: &mut DocParser) -> Option<char> {
+            let mut p = parser.clone();
+            p.expect_and_skip('\\')?;
+            match p.peek() {
+                Some(c) if is::escapable_char(c) => {
+                    p.step();
+                    *parser = p;
+                    Some(c)
+                }
+                Some(_) | None => panic!("TODO: error message about bad escape char"),
+            }
+        }
+
+        fn get_arg(parser: &mut DocParser) -> Option<String> {
+            let mut p = parser.clone();
+            let mut ret = String::new();
+
+            p.expect_and_skip('{')?;
+            'blk: loop {
+                if let Some(c) = get_escaped_char(&mut p) {
+                    ret.push(c);
+                } else {
+                    match p.peek() {
+                        Some('}') | None => break 'blk,
+                        Some(c) => {
+                            p.step();
+                            ret.push(c);
+                        }
+                    }
+                }
+            }
+            p.expect_and_skip('}')?;
+
+            *parser = p;
+            Some(ret)
+        }
+
+        let mut p = self.clone();
+        p.expect_and_skip('@')?;
+        let name = get_indent(&mut p)?;
+        let mut args = Vec::new();
+        while let Some(arg) = get_arg(&mut p) {
+            args.push(arg);
+        }
+
+        if args.len() == 0 {
+            return None;
+        }
+
+        *self = p;
+        Some(FuncCall { name, args })
     }
 
     pub fn get_url(&mut self) -> Option<String> {
@@ -652,6 +720,10 @@ mod tests {
     }
 
     macro_rules! assert_terms {
+        ($terms:literal, [$($ps:pat),+]) => {
+            let var = parse_single_line($terms);
+            assert_terms!(var, [$($ps),+]);
+        };
         ($terms:expr, [$($ps:pat),+]) => {
             let var = $terms;
             assert_terms!(var, i: 0, [$($ps),+]);
@@ -676,15 +748,17 @@ mod tests {
 
     #[test]
     fn simple_lines() {
-        assert_terms!(
-            parse_single_line("foo bar baz"),
-            [Word(_), Space, Word(_), Space, Word(_)]
-        );
+        assert_terms!("foo bar baz", [Word(_), Space, Word(_), Space, Word(_)]);
 
         assert_terms!(
-            parse_single_line("foo ${bar} baz"),
+            "foo ${bar} baz",
             [Word(_), Space, InlineMath(_), Space, Word(_)]
         );
+    }
+
+    #[test]
+    fn func_call_basic() {
+        assert_terms!("@bar{baz}", [FuncCall(_)]);
     }
 
     fn should_parse(should: bool, string: &str) {

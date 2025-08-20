@@ -145,6 +145,7 @@ where
                         TaskState::Cancelled => cb(w, true),
                     }
                 }?,
+                Term::FuncCall(_) => panic!("TODO"),
             }
         }
 

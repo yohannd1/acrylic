@@ -11,6 +11,7 @@ pub enum Term {
     InlineCode(String),
     InlineBold(String),
     InlineItalics(String),
+    FuncCall(FuncCall),
     TaskPrefix(TaskPrefix),
     BulletPrefix(BulletType),
 }
@@ -38,6 +39,12 @@ pub enum TaskState {
 pub enum TaskFormat {
     Paren,
     Square,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FuncCall {
+    pub name: String,
+    pub args: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
