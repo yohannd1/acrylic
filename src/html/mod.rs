@@ -1,8 +1,9 @@
 //! HTML output backend.
 
-use crate::parser::{DocumentSt2, Node, Term, TaskState, BulletType};
+use crate::parser::{BulletType, DocumentSt2, Node, TaskState, Term};
 use std::collections::HashMap;
-use std::io;
+use std::io::{self, BufWriter, Read, Write};
+use std::process::{Command, Stdio};
 
 mod consts;
 mod primitives;
@@ -145,7 +146,28 @@ where
                         TaskState::Cancelled => cb(w, true),
                     }
                 }?,
-                Term::FuncCall(_) => panic!("TODO"),
+                Term::FuncCall(fc) => {
+                    match fc.name.as_str() {
+                        "dot" => {
+                            assert!(fc.args.len() != 0);
+                            if fc.args.len() > 1 {
+                                panic!("dot call has more than one argument (TODO: proper error message)");
+                            }
+                            eprintln!(
+                                "Feeding {:?}",
+                                fc.args[0]
+                            );
+                            write!(
+                                w,
+                                "{}",
+                                dot_to_svg(&fc.args[0]).expect("TODO: proper error message")
+                            )?;
+                        }
+                        other => {
+                            panic!("invalid function name: {other:?} (TODO: proper error message)");
+                        }
+                    }
+                }
             }
         }
 
@@ -189,4 +211,28 @@ where
     }
 
     Ok(())
+}
+
+fn dot_to_svg(input: &str) -> Result<String, String> {
+    let child = Command::new("dot")
+        .args(&["-Tsvg_inline"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("failed to start dot command: {e}"))?;
+
+    {
+        let mut child_stdin = child.stdin.unwrap();
+        let mut writer = BufWriter::new(&mut child_stdin);
+        write!(&mut writer, "{}", input).map_err(|e| format!("I/O error: {e}"))?;
+    }
+
+    let mut child_stdout = child.stdout.unwrap();
+    let mut bytes = Vec::new();
+    child_stdout.read_to_end(&mut bytes).unwrap();
+
+    match str::from_utf8(&bytes) {
+        Ok(s) => Ok(s.to_owned()),
+        Err(e) => Err(format!("invalid command output: {e}")),
+    }
 }
