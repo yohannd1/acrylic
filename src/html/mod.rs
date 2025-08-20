@@ -128,7 +128,7 @@ where
                     assert!(i == 0, "display math is in a line with other elements");
                     elem(w, "span", [("class", "katex-display")], |w| text(w, x))?
                 }
-                Term::InlineCode(x) => elem(w, "code", [], |w| text(w, x))?,
+                Term::InlineCode(x) => elem(w, "code", [("class", "acr-inline-code")], |w| text(w, x))?,
                 Term::InlineBold(x) => elem(w, "b", [], |w| text(w, x))?,
                 Term::InlineItalics(x) => elem(w, "i", [], |w| text(w, x))?,
                 Term::BulletPrefix(pfx) => match pfx {
@@ -146,28 +146,37 @@ where
                         TaskState::Cancelled => cb(w, true),
                     }
                 }?,
-                Term::FuncCall(fc) => {
-                    match fc.name.as_str() {
-                        "dot" => {
-                            assert!(fc.args.len() != 0);
-                            if fc.args.len() > 1 {
-                                panic!("dot call has more than one argument (TODO: proper error message)");
-                            }
-                            eprintln!(
-                                "Feeding {:?}",
-                                fc.args[0]
+                Term::FuncCall(fc) => match fc.name.as_str() {
+                    "dot" => {
+                        assert!(fc.args.len() != 0);
+                        if fc.args.len() > 1 {
+                            panic!(
+                                "dot call has more than one argument (TODO: proper error message)"
                             );
-                            write!(
-                                w,
-                                "{}",
-                                dot_to_svg(&fc.args[0]).expect("TODO: proper error message")
-                            )?;
                         }
-                        other => {
-                            panic!("invalid function name: {other:?} (TODO: proper error message)");
-                        }
+                        write!(
+                            w,
+                            "{}",
+                            dot_to_svg(&fc.args[0]).expect("TODO: proper error message")
+                        )?;
                     }
-                }
+                    "code" => match fc.args.len() {
+                        0 => panic!("@code call: not enough args (TODO: proper error message)"),
+                        1 => {
+                            let x = &fc.args[0];
+                            elem(w, "pre", [], |w| elem(w, "code", [], |w| text(w, x)))?;
+                        }
+                        2 => {
+                            let _lang = &fc.args[0];
+                            let x = &fc.args[1];
+                            elem(w, "pre", [], |w| elem(w, "code", [], |w| text(w, x)))?;
+                        }
+                        _ => panic!("@code call: too many args (TODO: proper error message)"),
+                    },
+                    other => {
+                        panic!("invalid function name: {other:?} (TODO: proper error message)");
+                    }
+                },
             }
         }
 
@@ -235,4 +244,6 @@ fn dot_to_svg(input: &str) -> Result<String, String> {
         Ok(s) => Ok(s.to_owned()),
         Err(e) => Err(format!("invalid command output: {e}")),
     }
+
+    // TODO: capture stderr, check for error code
 }

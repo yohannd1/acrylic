@@ -18,7 +18,7 @@ Finished %-fold
   (x) Implement tasks
   (x) HTML - escape sequences + proper output ( get it from https://github.com/yohannd1/yohannd1.github.io )
   (x) Implement `%tags`
-  (x) Bug fix - comments followed by multiple @ci#{\n}s inhibits the spacing
+  (x) Bug fix - comments followed by multiple @c#{\n}#s inhibits the spacing
   (x) Bug fix (KaTeX) - display math lines need a little bit more space
   (x) Implement folding via `%-fold`
   (x) URL detection
@@ -27,31 +27,41 @@ Finished %-fold
     - This might not be a good thing to focus on for now.
     - Fixed it with the rust rewrite
   (x) bullet points (`*` and `-` at the start of lines)
+  (x) Implement `@functions{}`
+  (x) Raw arguments -- some examples for code blocks:
+    @code##{
+    %% syntax one
+    @code#{
+    this is a basic code block.
+    }#
+
+    %% syntax two
+    @code{python}#{
+    # this code block has an associated language.
+    def double(x):
+        return x * 2
+    assert double(5) == 10
+    }#
+    }##
 
 ( ) Bug fix - folds eat up the spacing between them and the next element
   - I can think of a quick fix for that, but it'll make things messy (the idea would be to just check whether a `div.spacing` is the last element of the fold and, if it is, just pop it off)
 
 ( ) Menu on the top of the page (e.g. "fold all", "unfold all", "print" (which unfolds all, hides the menu and opens the print menu))
 
-( ) Implement `@functions{}`
+( ) Install pipeline (something akin to `make install`)
 
 ( ) Cuter CSS
 
-( ) KaTeX - automated download (maybe use npm? :sob:)
+( ) JSON output
+
+( ) KaTeX - automated download script
 
 ( ) Rethink bold/italic/inline-code
   - I want to make it simple to parse, but still somewhat markdown-like.
   - How to handle escaping characters in these? Maybe just have a function variant that supports them - `@bold`/`@b`, `@inlineCode`/`@ic` and `@italic`/`@i`
 
 ( ) Keyword arguments as `[kw {arg}]` and positional arguments as {}. Would make things easier for me. Scribble-based.
-
-( ) raw args?
-  @code:
-  @code[lang{Bom dia}]#{{
-    this is raw but left-trimmed data
-  }}
-  \@end
-  @end
 
 ( ) Implement folding via `@fold`
 

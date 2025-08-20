@@ -45,7 +45,7 @@ summary:hover {
     background-color: var(--col-bg-alt);
 }
 
-code, pre {
+.acr-inline-code, pre {
     white-space: pre-wrap;
     overflow-wrap: break-word;
     word-wrap: break-word;
@@ -56,7 +56,8 @@ code, pre {
     color: var(--col-fg-alt);
     max-width: 100%;
 }
-code {
+
+.acr-inline-code {
     background-color: rgba(27, 31, 35, 0.05);
     border-radius: 2px;
     font-size: 85%;
@@ -65,6 +66,7 @@ code {
     padding-top: 0.2em;
     padding-bottom: 0.1em;
 }
+
 pre {
     padding: 1em 1.5em;
     display: block;
