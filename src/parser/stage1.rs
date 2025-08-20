@@ -494,6 +494,37 @@ impl<'a> DocParser<'a> {
             }
         }
 
+        fn get_raw_arg(parser: &mut DocParser) -> Option<String> {
+            let mut p = parser.clone();
+            let mut ret = String::new();
+
+            let hash_count = p.count_while(|c| c == '#');
+            p.expect_and_skip('{')?;
+
+            fn expect_end(parser: &mut DocParser, hash_count: usize) -> bool {
+                let mut p = parser.clone();
+                if p.expect_and_skip('}').is_none() {
+                    return false;
+                }
+                for _ in 0..hash_count {
+                    if p.expect_and_skip('#').is_none() {
+                        return false;
+                    }
+                }
+                *parser = p;
+                true
+            }
+
+            while !expect_end(&mut p, hash_count) {
+                let c = p.peek()?;
+                ret.push(c);
+                p.step();
+            }
+
+            *parser = p;
+            Some(ret)
+        }
+
         fn get_arg(parser: &mut DocParser) -> Option<String> {
             let mut p = parser.clone();
             let mut ret = String::new();
@@ -522,8 +553,14 @@ impl<'a> DocParser<'a> {
         p.expect_and_skip('@')?;
         let name = get_indent(&mut p)?;
         let mut args = Vec::new();
-        while let Some(arg) = get_arg(&mut p) {
-            args.push(arg);
+        'blk: loop {
+            if let Some(arg) = get_arg(&mut p) {
+                args.push(arg);
+            } else if let Some(arg) = get_raw_arg(&mut p) {
+                args.push(arg);
+            } else {
+                break 'blk;
+            }
         }
 
         if args.len() == 0 {
@@ -757,8 +794,27 @@ mod tests {
     }
 
     #[test]
-    fn func_call_basic() {
-        assert_terms!("@bar{baz}", [FuncCall(_)]);
+    fn func_calls() {
+        // Single arg
+        let res = parse_single_line("@bar{baz}");
+        assert_terms!(&res, [FuncCall(_)]);
+        let FuncCall(ref fc) = res[0] else { panic!() };
+        assert_eq!(fc.name, "bar");
+        assert_eq!(fc.args, vec!["baz"]);
+
+        // Two args
+        let res = parse_single_line("@foo{bar}{baz}");
+        assert_terms!(&res, [FuncCall(_)]);
+        let FuncCall(ref fc) = res[0] else { panic!() };
+        assert_eq!(fc.name, "foo");
+        assert_eq!(fc.args, vec!["bar", "baz"]);
+
+        // Raw arg
+        let res = parse_single_line("@bar#{ idk man { ksdljakld } }#");
+        assert_terms!(&res, [FuncCall(_)]);
+        let FuncCall(ref fc) = res[0] else { panic!() };
+        assert_eq!(fc.name, "bar");
+        assert_eq!(fc.args, vec![" idk man { ksdljakld } "]);
     }
 
     fn should_parse(should: bool, string: &str) {
