@@ -68,10 +68,9 @@ summary:hover {
 }
 
 pre {
-    padding: 1em 1.5em;
-    display: block;
+    padding: 0.5em;
+    /* display: block; */
     page-break-inside: avoid;
-    line-height: 1.45;
 
     background-color: var(--col-bg-alt);
     border-radius: 3px;

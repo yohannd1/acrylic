@@ -110,6 +110,69 @@ where
         );
     }
 
+    let write_inline_code = |w: &mut W, content: &str| {
+        elem(w, "code", [("class", "acr-inline-code")], |w| {
+            text(w, content)
+        })
+    };
+
+    let write_code_block = |w: &mut W, content: &str| {
+        let lines: Vec<_> = content.split("\n").collect();
+
+        let get_leading_indent = |x: &str| {
+            let mut ret: usize = 0;
+            for c in x.chars() {
+                match c {
+                    ' ' => ret += 1,
+                    '\t' => ret += 8,
+                    _ => break,
+                }
+            }
+            ret
+        };
+
+        // FIXME: this is very messy... document this, improve implementation and also remove a
+        // single trailing newline if it exists
+        elem(w, "pre", [], |w| {
+            elem(w, "code", [], |w| {
+                if lines.len() <= 1 || lines.get(0).map(|line| line.trim().len()).unwrap_or(0) > 0 {
+                    text(w, content)
+                } else {
+                    let leading_indent = get_leading_indent(lines[1]);
+                    let subset = &lines[1..];
+                    for (line_i, &line) in subset.iter().enumerate() {
+                        let mut iter = line.chars().peekable();
+                        let mut i = 0;
+                        loop {
+                            if i >= leading_indent {
+                                break;
+                            }
+                            let Some(c) = iter.peek() else {
+                                break;
+                            };
+                            match c {
+                                ' ' => {
+                                    i += 1;
+                                    iter.next();
+                                }
+                                '\t' => {
+                                    i += 8;
+                                    iter.next();
+                                }
+                                _ => break,
+                            }
+                        }
+                        text(w, &iter.collect::<String>())?;
+                        if line_i < subset.len() - 1 {
+                            write!(w, "\n")?;
+                        }
+                    }
+                    Ok(())
+                }
+            })
+        })
+    };
+
     let attrs_iter = attrs.iter().map(|(a, b)| (a.as_str(), b.as_str()));
     let write_fn = |w: &mut W| {
         for (i, term) in node.contents.iter().enumerate() {
@@ -128,7 +191,7 @@ where
                     assert!(i == 0, "display math is in a line with other elements");
                     elem(w, "span", [("class", "katex-display")], |w| text(w, x))?
                 }
-                Term::InlineCode(x) => elem(w, "code", [("class", "acr-inline-code")], |w| text(w, x))?,
+                Term::InlineCode(x) => write_inline_code(w, x)?,
                 Term::InlineBold(x) => elem(w, "b", [], |w| text(w, x))?,
                 Term::InlineItalics(x) => elem(w, "i", [], |w| text(w, x))?,
                 Term::BulletPrefix(pfx) => match pfx {
@@ -148,10 +211,9 @@ where
                 }?,
                 Term::FuncCall(fc) => match fc.name.as_str() {
                     "dot" => {
-                        assert!(fc.args.len() != 0);
-                        if fc.args.len() > 1 {
+                        if fc.args.len() != 1 {
                             panic!(
-                                "dot call has more than one argument (TODO: proper error message)"
+                                "dot call should have a single argument (TODO: proper error message)"
                             );
                         }
                         write!(
@@ -161,18 +223,24 @@ where
                         )?;
                     }
                     "code" => match fc.args.len() {
+                        // FIXME: this should not be output here, as it ends up being inside a <p>
+                        // tag, which is not valid.
                         0 => panic!("@code call: not enough args (TODO: proper error message)"),
-                        1 => {
-                            let x = &fc.args[0];
-                            elem(w, "pre", [], |w| elem(w, "code", [], |w| text(w, x)))?;
-                        }
+                        1 => write_code_block(w, &fc.args[0])?,
                         2 => {
                             let _lang = &fc.args[0];
-                            let x = &fc.args[1];
-                            elem(w, "pre", [], |w| elem(w, "code", [], |w| text(w, x)))?;
+                            write_code_block(w, &fc.args[1])?;
                         }
                         _ => panic!("@code call: too many args (TODO: proper error message)"),
                     },
+                    "c" => {
+                        if fc.args.len() != 1 {
+                            panic!(
+                                "@c call: should have a single argument (TODO: proper error message)"
+                            );
+                        }
+                        write_inline_code(w, &fc.args[0])?;
+                    }
                     other => {
                         panic!("invalid function name: {other:?} (TODO: proper error message)");
                     }
