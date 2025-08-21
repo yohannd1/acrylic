@@ -173,6 +173,12 @@ where
         })
     };
 
+    let write_ref = |w: &mut W, content: &str, r#ref: &str| {
+        elem(w, "span", [("class", "acr-href"), ("title", r#ref)], |w| {
+            text(w, content)
+        })
+    };
+
     let attrs_iter = attrs.iter().map(|(a, b)| (a.as_str(), b.as_str()));
     let write_fn = |w: &mut W| {
         for (i, term) in node.contents.iter().enumerate() {
@@ -240,6 +246,11 @@ where
                             );
                         }
                         write_inline_code(w, &fc.args[0])?;
+                    }
+                    "ref" => match fc.args.len() {
+                        1 => write_ref(w, &fc.args[0], &fc.args[0])?,
+                        2 => write_ref(w, &fc.args[1], &fc.args[0])?,
+                        argc => panic!("@ref call: arg count must be 1 or 2 (got {argc}) (TODO: proper error message)")
                     }
                     other => {
                         panic!("invalid function name: {other:?} (TODO: proper error message)");

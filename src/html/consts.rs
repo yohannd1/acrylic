@@ -6,7 +6,9 @@ pub const DEFAULT_STYLE: &'static str = r#"
     --col-bg-alt: #EEEEEE;
 
     --col-emphasis: #DF5273;
+
     --col-href: #2277DD;
+    --col-href-hover: #66CCEE;
 }
 
 html {
@@ -29,6 +31,18 @@ b {
 
 a {
     color: var(--col-href);
+    font-weight: bold;
+    text-decoration-line: underline;
+}
+
+a:hover {
+    color: var(--col-href-hover);
+}
+
+/* TODO: signify this is clickable (when I manage to link this stuff), or just make it an <a> tag too */
+.acr-href {
+    color: var(--col-emphasis);
+    text-decoration-line: underline;
 }
 
 span.acr-tag {

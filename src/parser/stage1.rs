@@ -525,25 +525,28 @@ impl<'a> DocParser<'a> {
             Some(ret)
         }
 
-        fn get_arg(parser: &mut DocParser) -> Option<String> {
+        fn get_arg(parser: &mut DocParser, delim: (char, char)) -> Option<String> {
             let mut p = parser.clone();
             let mut ret = String::new();
 
-            p.expect_and_skip('{')?;
+            let (dl, dr) = delim;
+
+            p.expect_and_skip(dl)?;
             'blk: loop {
                 if let Some(c) = get_escaped_char(&mut p) {
                     ret.push(c);
                 } else {
                     match p.peek() {
-                        Some('}') | None => break 'blk,
+                        Some(x) if x == dr => break 'blk,
                         Some(c) => {
                             p.step();
                             ret.push(c);
                         }
+                        None => break 'blk,
                     }
                 }
             }
-            p.expect_and_skip('}')?;
+            p.expect_and_skip(dr)?;
 
             *parser = p;
             Some(ret)
@@ -554,7 +557,9 @@ impl<'a> DocParser<'a> {
         let name = get_indent(&mut p)?;
         let mut args = Vec::new();
         'blk: loop {
-            if let Some(arg) = get_arg(&mut p) {
+            if let Some(arg) = get_arg(&mut p, ('{', '}')) {
+                args.push(arg);
+            } else if let Some(arg) = get_arg(&mut p, ('(', ')')) {
                 args.push(arg);
             } else if let Some(arg) = get_raw_arg(&mut p) {
                 args.push(arg);
@@ -686,7 +691,7 @@ impl<'a> DocParser<'a> {
                     p2.step();
 
                     match p2.peek() {
-                        Some(x) if x == delim => {
+                        Some(x) if x == delim || x == '\\' => {
                             ret.push(x);
                             p2.step();
                             p = p2;
@@ -804,6 +809,13 @@ mod tests {
 
         // Two args
         let res = parse_single_line("@foo{bar}{baz}");
+        assert_terms!(&res, [FuncCall(_)]);
+        let FuncCall(ref fc) = res[0] else { panic!() };
+        assert_eq!(fc.name, "foo");
+        assert_eq!(fc.args, vec!["bar", "baz"]);
+
+        // Paren arg
+        let res = parse_single_line("@foo(bar){baz}");
         assert_terms!(&res, [FuncCall(_)]);
         let FuncCall(ref fc) = res[0] else { panic!() };
         assert_eq!(fc.name, "foo");
