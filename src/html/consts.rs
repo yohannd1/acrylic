@@ -94,16 +94,13 @@ document.addEventListener("DOMContentLoaded", function() {
         globalGroup: true,
     };
 
-    for (let e of document.querySelectorAll(".katex-inline")) {
+    for (let e of document.querySelectorAll(".katex-inline, .katex-display")) {
         const text = e.textContent;
-        e.textContent = "";
-        katex.render(text, e, {displayMode: false, ...opts});
-    }
+        const opts_selected = e.classList.contains("katex-display")
+            ? {displayMode: true, fleqn: true, ...opts}
+            : opts;
 
-    for (let e of document.querySelectorAll(".katex-display")) {
-        const text = e.textContent;
-        e.textContent = "";
-        katex.render(text, e, {displayMode: true, fleqn: true, ...opts});
+        katex.render(text, e, opts_selected);
     }
 });
 "#;
