@@ -9,6 +9,11 @@ pub const DEFAULT_STYLE: &'static str = r#"
 
     --col-href: #2277DD;
     --col-href-hover: #66CCEE;
+
+    /* https://systemfontstack.com/ */
+    --font-sans-serif: -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, Adwaita Sans, Cantarell, Ubuntu, roboto, noto, helvetica, arial, sans-serif;
+    --font-serif: Iowan Old Style, Apple Garamond, Baskerville, Times New Roman, Droid Serif, Times, Source Serif Pro, serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
+    --font-monospace: Menlo, Consolas, Monaco, Adwaita Mono, Liberation Mono, Lucida Console, monospace;
 }
 
 html {
@@ -16,7 +21,7 @@ html {
 }
 
 body {
-    font-family: sans-serif;
+    font-family: var(--font-sans-serif);
     font-size: 1.08em;
 }
 
@@ -52,7 +57,7 @@ span.acr-tag {
 
 div.acr-spacing {
     margin-top: 0em;
-    margin-bottom: 0.7em;
+    margin-bottom: 0.85em;
 }
 
 summary:hover {
@@ -64,7 +69,7 @@ summary:hover {
     overflow-wrap: break-word;
     word-wrap: break-word;
 
-    font-family: monospace;
+    font-family: var(--font-monospace);
     background: #f4f4f4;
     border: 1px solid #DDD;
     color: var(--col-fg-alt);
@@ -96,6 +101,13 @@ pre {
 }
 .katex-display.fleqn>.katex {
     padding-left: 0em;
+}
+
+@media (prefers-color-scheme: dark) {
+    /* TODO: this is not the right way, but it works for now */
+    svg g {
+        fill: #FFF;
+    }
 }
 "#;
 
