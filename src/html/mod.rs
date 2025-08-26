@@ -2,7 +2,7 @@
 
 use crate::parser::{BulletType, DocumentSt2, Node, TaskState, Term};
 use std::collections::HashMap;
-use std::io::{self, BufWriter, Read, Write};
+use std::io::{self, BufWriter, Write};
 use std::process::{Command, Stdio};
 
 mod consts;
@@ -302,27 +302,32 @@ where
 }
 
 fn dot_to_svg(input: &str) -> Result<String, String> {
-    let child = Command::new("dot")
+    let mut child = Command::new("dot")
         .args(&["-Tsvg_inline"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| format!("failed to start dot command: {e}"))?;
 
     {
-        let mut child_stdin = child.stdin.unwrap();
-        let mut writer = BufWriter::new(&mut child_stdin);
+        let child_stdin = child.stdin.as_mut().unwrap();
+        let mut writer = BufWriter::new(child_stdin);
         write!(&mut writer, "{}", input).map_err(|e| format!("I/O error: {e}"))?;
     }
 
-    let mut child_stdout = child.stdout.unwrap();
-    let mut bytes = Vec::new();
-    child_stdout.read_to_end(&mut bytes).unwrap();
+    let out = child
+        .wait_with_output()
+        .map_err(|e| format!("failed to wait command: {e}"))?;
 
-    match str::from_utf8(&bytes) {
-        Ok(s) => Ok(s.to_owned()),
-        Err(e) => Err(format!("invalid command output: {e}")),
+    if out.status.success() {
+        str::from_utf8(&out.stdout)
+            .map(|s| s.to_owned())
+            .map_err(|e| format!("invalid command output: {e}"))
+    } else {
+        let output = str::from_utf8(&out.stderr)
+            .ok()
+            .unwrap_or("<failed to read stderr>");
+        Err(format!("non-zero exit code; stderr output:\n{output}"))
     }
-
-    // TODO: capture stderr, check for error code
 }
