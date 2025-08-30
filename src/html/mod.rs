@@ -5,7 +5,6 @@ use std::collections::HashMap;
 use std::io::{self, BufWriter, Write};
 use std::process::{Command, Stdio};
 
-mod consts;
 mod primitives;
 
 use primitives::{elem, text};
@@ -16,40 +15,46 @@ pub struct HtmlOptions<'a> {
     pub katex_path: &'a str,
 }
 
+const HEADER_METATAGS: &'static str = concat!(
+    r#"<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>"#,
+    r#"<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>"#,
+    r#"<meta name="HandheldFriendly" content="true"/>"#,
+    r#"<meta charset="UTF-8"/>"#,
+);
+const DEFAULT_STYLE: &'static str = include_str!("style.css");
+const INIT_JS: &'static str = include_str!("script.js");
+
 /// Write the HTML representation of `doc` into `w`.
 pub fn write_html<W>(w: &mut W, doc: &DocumentSt2, options: &HtmlOptions<'_>) -> io::Result<()>
 where
     W: io::Write,
 {
+
+    let write_head = |w: &mut W| {
+        write!(w, "{}", HEADER_METATAGS)?;
+        elem(w, "title", [], |w| text(w, &doc.options.title))?;
+        write_katex_header(w, options.katex_path)?;
+        write!(w, "<style>{}</style>", DEFAULT_STYLE)?;
+        Ok(())
+    };
+
+    let write_article = |w: &mut W| {
+        if !doc.options.title.is_empty() {
+            elem(w, "h1", [], |w| text(w, &doc.options.title))?;
+        }
+
+        for node in &doc.nodes {
+            write_html_node(w, node, 0)?;
+        }
+
+        Ok(())
+    };
+
     write!(w, "<!DOCTYPE html>\n")?;
     elem(w, "html", [], |w| {
-        elem(w, "head", [], |w| {
-            write!(
-                w,
-                r#"<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>"#
-            )?;
-            write!(
-                w,
-                r#"<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>"#
-            )?;
-            write!(w, r#"<meta name="HandheldFriendly" content="true"/>"#)?;
-            write!(w, r#"<meta charset="UTF-8"/>"#)?;
-            elem(w, "title", [], |w| text(w, &doc.options.title))?;
-            write_katex_header(w, options.katex_path)?;
-            write!(w, "<style>{}</style>", consts::DEFAULT_STYLE)
-        })?;
+        elem(w, "head", [], write_head)?;
         elem(w, "body", [], |w| {
-            elem(w, "main", [], |w| {
-                if !doc.options.title.is_empty() {
-                    elem(w, "h1", [], |w| text(w, &doc.options.title))?;
-                }
-
-                for node in &doc.nodes {
-                    write_html_node(w, node, 0)?;
-                }
-
-                Ok(())
-            })
+            elem(w, "main", [], write_article)
         })
     })
 }
@@ -82,7 +87,7 @@ where
         ],
         |_| Ok(()),
     )?;
-    write!(w, "<script>{}</script>", consts::KATEX_INIT_JS)?;
+    write!(w, "<script>{}</script>", INIT_JS)?;
 
     Ok(())
 }
