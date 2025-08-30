@@ -39,15 +39,17 @@ where
             write!(w, "<style>{}</style>", consts::DEFAULT_STYLE)
         })?;
         elem(w, "body", [], |w| {
-            if !doc.options.title.is_empty() {
-                elem(w, "h1", [], |w| text(w, &doc.options.title))?;
-            }
+            elem(w, "main", [], |w| {
+                if !doc.options.title.is_empty() {
+                    elem(w, "h1", [], |w| text(w, &doc.options.title))?;
+                }
 
-            for node in &doc.nodes {
-                write_html_node(w, node, 0)?;
-            }
+                for node in &doc.nodes {
+                    write_html_node(w, node, 0)?;
+                }
 
-            Ok(())
+                Ok(())
+            })
         })
     })
 }
