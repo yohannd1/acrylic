@@ -450,9 +450,7 @@ impl<'a> DocParser<'a> {
                     p.step();
                     first_char = false;
                 }
-                Some(c)
-                    if first_char && (c == '$' || c == '%' || c == '*' || c == '_' || c == '`') =>
-                {
+                Some(c) if first_char && matches!(c, '$' | '%' | '*' | '_' | '`') => {
                     ret.push(c);
                     p.step();
                     first_char = false;

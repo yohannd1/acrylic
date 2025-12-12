@@ -29,7 +29,6 @@ pub fn write_html<W>(w: &mut W, doc: &DocumentSt2, options: &HtmlOptions<'_>) ->
 where
     W: io::Write,
 {
-
     let write_head = |w: &mut W| {
         write!(w, "{}", HEADER_METATAGS)?;
         elem(w, "title", [], |w| text(w, &doc.options.title))?;
@@ -53,9 +52,7 @@ where
     write!(w, "<!DOCTYPE html>\n")?;
     elem(w, "html", [], |w| {
         elem(w, "head", [], write_head)?;
-        elem(w, "body", [], |w| {
-            elem(w, "main", [], write_article)
-        })
+        elem(w, "body", [], |w| elem(w, "main", [], write_article))
     })
 }
 
@@ -140,43 +137,45 @@ where
 
         // FIXME: this is very messy... document this, improve implementation and also remove a
         // single trailing newline if it exists
-        elem(w, "pre", [], |w| {
-            elem(w, "code", [], |w| {
-                if lines.len() <= 1 || lines.get(0).map(|line| line.trim().len()).unwrap_or(0) > 0 {
-                    text(w, content)
-                } else {
-                    let leading_indent = get_leading_indent(lines[1]);
-                    let subset = &lines[1..];
-                    for (line_i, &line) in subset.iter().enumerate() {
-                        let mut iter = line.chars().peekable();
-                        let mut i = 0;
-                        loop {
-                            if i >= leading_indent {
-                                break;
-                            }
-                            let Some(c) = iter.peek() else {
-                                break;
-                            };
-                            match c {
-                                ' ' => {
-                                    i += 1;
-                                    iter.next();
-                                }
-                                '\t' => {
-                                    i += 8;
-                                    iter.next();
-                                }
-                                _ => break,
-                            }
+        let write_code_content = |w: &mut W| {
+            if lines.len() <= 1 || lines[0].trim().len() > 0 {
+                text(w, content)
+            } else {
+                let leading_indent = get_leading_indent(lines[1]);
+                let subset = &lines[1..];
+                for (line_i, &line) in subset.iter().enumerate() {
+                    let mut iter = line.chars().peekable();
+                    let mut i = 0;
+                    loop {
+                        if i >= leading_indent {
+                            break;
                         }
-                        text(w, &iter.collect::<String>())?;
-                        if line_i < subset.len() - 1 {
-                            write!(w, "\n")?;
+                        let Some(c) = iter.peek() else {
+                            break;
+                        };
+                        match c {
+                            ' ' => {
+                                i += 1;
+                                iter.next();
+                            }
+                            '\t' => {
+                                i += 8;
+                                iter.next();
+                            }
+                            _ => break,
                         }
                     }
-                    Ok(())
+                    text(w, &iter.collect::<String>())?;
+                    if line_i < subset.len() - 1 {
+                        write!(w, "\n")?;
+                    }
                 }
-            })
+                Ok(())
+            }
+        };
+
+        elem(w, "pre", [], |w| {
+            elem(w, "code", [], |w| write_code_content(w))
         })
     };
 
@@ -245,7 +244,7 @@ where
                             write_code_block(w, &fc.args[1])?;
                         }
                         _ => panic!("@code call: too many args (TODO: proper error message)"),
-                    },
+                    }
                     "c" => {
                         if fc.args.len() != 1 {
                             panic!(
@@ -281,24 +280,21 @@ where
         })
         .is_some();
 
-    if is_fold {
-        elem(w, "details", [], |w| {
-            elem(w, "summary", attrs_iter, write_fn)?;
-            write!(w, "\n")?;
-
-            for child in &node.children {
-                write_html_node(w, child, indent + 1)?;
-            }
-
-            Ok(())
-        })?;
-    } else {
-        elem(w, "p", attrs_iter, write_fn)?;
+    let write_inside = |w: &mut W, thing: &'static str| {
+        elem(w, thing, attrs_iter, write_fn)?;
         write!(w, "\n")?;
 
         for child in &node.children {
             write_html_node(w, child, indent + 1)?;
         }
+
+        Ok(())
+    };
+
+    if is_fold {
+        elem(w, "details", [], |w| write_inside(w, "summary"))?;
+    } else {
+        write_inside(w, "p")?;
     }
 
     if node.bottom_spacing {

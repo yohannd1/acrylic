@@ -96,7 +96,7 @@ pre {
 
 /* katex display */
 .katex-display {
-    margin: 0.5em 0em;
+    margin: 0.2em;
 }
 .katex-display.fleqn>.katex {
     padding-left: 0em;
