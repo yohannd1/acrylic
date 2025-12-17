@@ -89,6 +89,113 @@ where
     Ok(())
 }
 
+fn write_term<W>(w: &mut W, term: &Term, is_first: bool) -> io::Result<()>
+where
+    W: io::Write,
+{
+    match term {
+        Term::Space => write!(w, " ")?,
+        Term::Word(x) => write!(w, "{x}")?,
+        Term::MaybeDelim(x) => write!(w, "{x}")?,
+        Term::Tag(x) => elem(w, "span", [("class", "acr-tag")], |w| {
+            text(w, "%")?;
+            text(w, x)
+        })?,
+        Term::Url(x) => elem(w, "a", [("href", x.as_str())], |w| text(w, x))?,
+        Term::InlineMath(x) => {
+            elem(w, "span", [("class", "katex-inline")], |w| text(w, x))?
+        }
+        Term::DisplayMath(x) => {
+            assert!(is_first, "display math should be alone in a line");
+            elem(w, "span", [("class", "katex-display")], |w| text(w, x))?
+        }
+        Term::InlineCode(x) => write_inline_code(w, x)?,
+        Term::InlineBold(x) => elem(w, "b", [], |w| text(w, x))?,
+        Term::InlineItalics(x) => elem(w, "i", [], |w| text(w, x))?,
+        Term::BulletPrefix(pfx) => match pfx {
+            BulletType::Dash => text(w, "-")?,
+            BulletType::Star => text(w, "*")?,
+        },
+        Term::TaskPrefix(pfx) => {
+            let cb = |w: &mut W, checked: bool| {
+                let checked_s = if checked { " checked" } else { "" };
+                write!(w, r#"<input type="checkbox" disabled{checked_s}/>"#)
+            };
+            match pfx.state {
+                TaskState::Todo => cb(w, false),
+                TaskState::Done => cb(w, true),
+                TaskState::Cancelled => cb(w, true),
+            }
+        }?,
+        Term::FuncCall(fc) => match fc.name.as_str() {
+            "dot" => {
+                if fc.args.len() != 1 {
+                    panic!(
+                        "dot call should have a single argument (TODO: proper error message)"
+                    );
+                }
+
+                write!(
+                    w,
+                    "{}",
+                    dot_to_svg(check_arg_word(&fc.args[0]))
+                        .expect("TODO: proper error message")
+                )?;
+            }
+            "code" => match fc.args.len() {
+                // FIXME: this should not be output here, as it ends up being inside a <p>
+                // tag, which is not valid.
+                0 => panic!("@code call: not enough args (TODO: proper error message)"),
+                1 => write_code_block(w, check_arg_word(&fc.args[0]))?,
+                2 => {
+                    let _lang = check_arg_word(&fc.args[0]);
+                    write_code_block(w, check_arg_word(&fc.args[1]))?;
+                }
+                _ => panic!("@code call: too many args (TODO: proper error message)"),
+            },
+            "table" => {
+                if fc.args.len() != 1 {
+                    panic!(
+                        "table call should have a single argument (TODO: proper error message)"
+                    );
+                }
+
+                // FIXME: this should not be output here, as it ends up being inside a <p>
+                // tag, which is not valid.
+                write_table(w, &fc.args[0])?;
+            }
+            "c" => {
+                if fc.args.len() != 1 {
+                    panic!(
+                        "@c call: should have a single argument (TODO: proper error message)"
+                    );
+                }
+                write_inline_code(w, check_arg_word(&fc.args[0]))?;
+            }
+            "ref" => match fc.args.len() {
+                1 => {
+                    let arg = check_arg_word(&fc.args[0]);
+                    write_ref(w, arg, arg)?;
+                }
+                2 => {
+                    write_ref(w, check_arg_word(&fc.args[1]), check_arg_word(&fc.args[0]))?;
+                }
+                argc => panic!(
+                    "@ref call: arg count must be 1 or 2 (got {argc}) (TODO: proper error message)"
+                ),
+            },
+            other => {
+                panic!("invalid function name: {other:?} (TODO: proper error message)");
+            }
+        },
+        Term::List(_) => panic!(
+            "list cannot be used outside of a function call that understands it (TODO: proper error message)"
+        ),
+    }
+
+    Ok(())
+}
+
 pub fn write_html_node<W>(w: &mut W, node: &Node, indent: usize) -> io::Result<()>
 where
     W: io::Write,
@@ -114,185 +221,10 @@ where
         );
     }
 
-    let write_inline_code = |w: &mut W, content: &str| {
-        elem(w, "code", [("class", "acr-inline-code")], |w| {
-            text(w, content)
-        })
-    };
-
-    let write_code_block = |w: &mut W, content: &str| {
-        let lines: Vec<_> = content.split("\n").collect();
-
-        let get_leading_indent = |x: &str| {
-            let mut ret: usize = 0;
-            for c in x.chars() {
-                match c {
-                    ' ' => ret += 1,
-                    '\t' => ret += 8,
-                    _ => break,
-                }
-            }
-            ret
-        };
-
-        // FIXME: this is very messy... document this, improve implementation and also remove a
-        // single trailing newline if it exists
-        let write_code_content = |w: &mut W| {
-            if lines.len() <= 1 || lines[0].trim().len() > 0 {
-                text(w, content)
-            } else {
-                let leading_indent = get_leading_indent(lines[1]);
-                let subset = &lines[1..];
-                for (line_i, &line) in subset.iter().enumerate() {
-                    let mut iter = line.chars().peekable();
-                    let mut i = 0;
-                    loop {
-                        if i >= leading_indent {
-                            break;
-                        }
-                        let Some(c) = iter.peek() else {
-                            break;
-                        };
-                        match c {
-                            ' ' => {
-                                i += 1;
-                                iter.next();
-                            }
-                            '\t' => {
-                                i += 8;
-                                iter.next();
-                            }
-                            _ => break,
-                        }
-                    }
-                    text(w, &iter.collect::<String>())?;
-                    if line_i < subset.len() - 1 {
-                        write!(w, "\n")?;
-                    }
-                }
-                Ok(())
-            }
-        };
-
-        elem(w, "pre", [], |w| {
-            elem(w, "code", [], |w| write_code_content(w))
-        })
-    };
-
-    let write_ref = |w: &mut W, content: &str, r#ref: &str| {
-        elem(w, "span", [("class", "acr-href"), ("title", r#ref)], |w| {
-            text(w, content)
-        })
-    };
-
     let attrs_iter = attrs.iter().map(|(a, b)| (a.as_str(), b.as_str()));
     let write_fn = |w: &mut W| {
-        fn check_arg_word(x: &[Term]) -> &str {
-            if x.len() != 1 {
-                panic!(
-                    "argument should have exactly one term (got {}) (TODO: proper error message)",
-                    x.len()
-                );
-            }
-
-            match &x[0] {
-                Term::Word(w) => w,
-                _ => panic!(
-                    "argument should be a string/word (got {x:?}) (TODO: proper error message)"
-                ),
-            }
-        }
-
         for (i, term) in node.contents.iter().enumerate() {
-            match term {
-                Term::Space => write!(w, " ")?,
-                Term::Word(x) => write!(w, "{x}")?,
-                Term::MaybeDelim(x) => write!(w, "{x}")?,
-                Term::Tag(x) => elem(w, "span", [("class", "acr-tag")], |w| {
-                    text(w, "%")?;
-                    text(w, x)
-                })?,
-                Term::Url(x) => elem(w, "a", [("href", x.as_str())], |w| text(w, x))?,
-                Term::InlineMath(x) => {
-                    elem(w, "span", [("class", "katex-inline")], |w| text(w, x))?
-                }
-                Term::DisplayMath(x) => {
-                    assert!(i == 0, "display math is in a line with other elements");
-                    elem(w, "span", [("class", "katex-display")], |w| text(w, x))?
-                }
-                Term::InlineCode(x) => write_inline_code(w, x)?,
-                Term::InlineBold(x) => elem(w, "b", [], |w| text(w, x))?,
-                Term::InlineItalics(x) => elem(w, "i", [], |w| text(w, x))?,
-                Term::BulletPrefix(pfx) => match pfx {
-                    BulletType::Dash => text(w, "-")?,
-                    BulletType::Star => text(w, "*")?,
-                },
-                Term::TaskPrefix(pfx) => {
-                    let cb = |w: &mut W, checked: bool| {
-                        let checked_s = if checked { " checked" } else { "" };
-                        write!(w, r#"<input type="checkbox" disabled{checked_s}/>"#)
-                    };
-                    match pfx.state {
-                        TaskState::Todo => cb(w, false),
-                        TaskState::Done => cb(w, true),
-                        TaskState::Cancelled => cb(w, true),
-                    }
-                }?,
-                Term::FuncCall(fc) => match fc.name.as_str() {
-                    "dot" => {
-                        if fc.args.len() != 1 {
-                            panic!(
-                                "dot call should have a single argument (TODO: proper error message)"
-                            );
-                        }
-
-                        write!(
-                            w,
-                            "{}",
-                            dot_to_svg(check_arg_word(&fc.args[0]))
-                                .expect("TODO: proper error message")
-                        )?;
-                    }
-                    "code" => match fc.args.len() {
-                        // FIXME: this should not be output here, as it ends up being inside a <p>
-                        // tag, which is not valid.
-                        0 => panic!("@code call: not enough args (TODO: proper error message)"),
-                        1 => write_code_block(w, check_arg_word(&fc.args[0]))?,
-                        2 => {
-                            let _lang = check_arg_word(&fc.args[0]);
-                            write_code_block(w, check_arg_word(&fc.args[1]))?;
-                        }
-                        _ => panic!("@code call: too many args (TODO: proper error message)"),
-                    },
-
-                    "c" => {
-                        if fc.args.len() != 1 {
-                            panic!(
-                                "@c call: should have a single argument (TODO: proper error message)"
-                            );
-                        }
-                        write_inline_code(w, check_arg_word(&fc.args[0]))?;
-                    }
-                    "ref" => match fc.args.len() {
-                        1 => {
-                            let arg = check_arg_word(&fc.args[0]);
-                            write_ref(w, arg, arg)?
-                        }
-                        2 => {
-                            write_ref(w, check_arg_word(&fc.args[1]), check_arg_word(&fc.args[0]))?
-                        }
-                        argc => panic!(
-                            "@ref call: arg count must be 1 or 2 (got {argc}) (TODO: proper error message)"
-                        ),
-                    },
-                    other => {
-                        panic!("invalid function name: {other:?} (TODO: proper error message)");
-                    }
-                },
-                Term::List(_) => panic!(
-                    "list cannot be used outside of a function call that understands it (TODO: proper error message)"
-                ),
-            }
+            write_term(w, term, i == 0)?;
         }
 
         Ok(())
@@ -331,6 +263,125 @@ where
     Ok(())
 }
 
+fn write_inline_code<W: io::Write>(w: &mut W, content: &str) -> io::Result<()> {
+    elem(w, "code", [("class", "acr-inline-code")], |w| {
+        text(w, content)
+    })
+}
+
+fn write_code_block<W: io::Write>(w: &mut W, content: &str) -> io::Result<()> {
+    let lines: Vec<_> = content.split("\n").collect();
+
+    let get_leading_indent = |x: &str| {
+        let mut ret: usize = 0;
+        for c in x.chars() {
+            match c {
+                ' ' => ret += 1,
+                '\t' => ret += 8,
+                _ => break,
+            }
+        }
+        ret
+    };
+
+    // FIXME: this is very messy... document this, improve implementation and also remove a
+    // single trailing newline if it exists
+    let write_code_content = |w: &mut W| {
+        if lines.len() <= 1 || lines[0].trim().len() > 0 {
+            text(w, content)
+        } else {
+            let leading_indent = get_leading_indent(lines[1]);
+            let subset = &lines[1..];
+            for (line_i, &line) in subset.iter().enumerate() {
+                let mut iter = line.chars().peekable();
+                let mut i = 0;
+                loop {
+                    if i >= leading_indent {
+                        break;
+                    }
+                    let Some(c) = iter.peek() else {
+                        break;
+                    };
+                    match c {
+                        ' ' => {
+                            i += 1;
+                            iter.next();
+                        }
+                        '\t' => {
+                            i += 8;
+                            iter.next();
+                        }
+                        _ => break,
+                    }
+                }
+                text(w, &iter.collect::<String>())?;
+                if line_i < subset.len() - 1 {
+                    write!(w, "\n")?;
+                }
+            }
+            Ok(())
+        }
+    };
+
+    elem(w, "pre", [], |w| {
+        elem(w, "code", [], |w| write_code_content(w))
+    })
+}
+
+fn write_table<W: io::Write>(w: &mut W, args: &[Term]) -> io::Result<()> {
+    let mut it = args.iter();
+
+    let mut get_next_row = || -> Option<&[Vec<Term>]> {
+        loop {
+            match it.next()? {
+                Term::Space => {}
+                Term::List(row) => return Some(row),
+                other => {
+                    panic!("expected space or list, got {other:?} (TODO: proper error message)");
+                }
+            }
+        }
+    };
+
+    let write_row = |w: &mut W, row: &[Vec<Term>], tag: &str| {
+        elem(w, "tr", [], |w| {
+            for arg in row {
+                elem(w, tag, [], |w| {
+                    for term in arg {
+                        write_term(w, term, false)?;
+                    }
+
+                    Ok(())
+                })?;
+            }
+
+            Ok(())
+        })
+    };
+
+    let heading_row = get_next_row().expect("no rows are available... (TODO: proper error message)");
+    let expect_len = heading_row.len();
+
+    elem(w, "table", [], |w| {
+        write_row(w, heading_row, "th")?;
+
+        while let Some(row) = get_next_row() {
+            if row.len() != expect_len {
+                panic!("expected {}-arg row, got {} args", expect_len, row.len());
+            }
+            write_row(w, row, "td")?;
+        }
+
+        Ok(())
+    })
+}
+
+fn write_ref<W: io::Write>(w: &mut W, content: &str, r#ref: &str) -> io::Result<()> {
+    elem(w, "span", [("class", "acr-href"), ("title", r#ref)], |w| {
+        text(w, content)
+    })
+}
+
 fn dot_to_svg(input: &str) -> Result<String, String> {
     let mut child = Command::new("dot")
         .args(&["-Tsvg_inline"])
@@ -359,5 +410,19 @@ fn dot_to_svg(input: &str) -> Result<String, String> {
             .ok()
             .unwrap_or("<failed to read stderr>");
         Err(format!("non-zero exit code; stderr output:\n{output}"))
+    }
+}
+
+fn check_arg_word(x: &[Term]) -> &str {
+    if x.len() != 1 {
+        panic!(
+            "argument should have exactly one term (got {}) (TODO: proper error message)",
+            x.len()
+        );
+    }
+
+    match &x[0] {
+        Term::Word(w) => w,
+        _ => panic!("argument should be a string/word (got {x:?}) (TODO: proper error message)"),
     }
 }

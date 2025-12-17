@@ -322,7 +322,7 @@ impl<'a> DocParser<'a> {
         ret
     }
 
-    pub fn get_term(&mut self) -> Result<Option<Term>, String> {
+    pub fn get_term(&mut self, multiline: bool) -> Result<Option<Term>, String> {
         Ok(loop {
             if let Some(()) = self.get_inline_whitespace() {
                 break Some(Term::Space);
@@ -355,6 +355,8 @@ impl<'a> DocParser<'a> {
                 break Some(Term::MaybeDelim(x));
             } else if let Some(x) = self.get_word_part() {
                 break Some(Term::Word(x));
+            } else if matches!(self.peek(), Some('\n')) && multiline {
+                self.next();
             } else {
                 break None;
             }
@@ -393,7 +395,7 @@ impl<'a> DocParser<'a> {
         }
 
         loop {
-            match p.get_term() {
+            match p.get_term(false) {
                 Ok(Some(t)) => terms.push(t),
                 Ok(None) => break,
                 Err(e) => return Err(Self::make_parse_error_msg(self, &p, &e, &terms)),
@@ -535,7 +537,7 @@ impl<'a> DocParser<'a> {
 
             let mut terms = Vec::new();
             loop {
-                match p.get_term() {
+                match p.get_term(true) {
                     Ok(Some(t @ Term::MaybeDelim(dm))) => {
                         if dm == dr {
                             break;
