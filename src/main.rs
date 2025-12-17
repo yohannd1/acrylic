@@ -8,8 +8,8 @@ mod parser;
 use crate::cli::{CliArg, CliOption, CliParser};
 use crate::html::{write_html, HtmlOptions};
 use crate::parser::parse;
-use std::io::Write;
-use std::path::PathBuf;
+use std::fs::File;
+use std::io::{self, Read, Write};
 
 // TODO: make tests for stage1 - conditions where each type of term parses
 //
@@ -20,12 +20,14 @@ use std::path::PathBuf;
 // styles; and i might be able to more efficiently handle spacing at the end of fold blocks (they
 // shouldn't be hidden inside it) ...
 
-#[derive(Debug, Clone)]
+pub type ReadFileGen = Box<dyn FnOnce() -> io::Result<Box<dyn Read>>>;
+pub type WriteFileGen = Box<dyn FnOnce() -> io::Result<Box<dyn Write>>>;
+
 pub struct Options {
     pub katex_path: String,
     pub backend: Backend,
-    pub input_path: PathBuf,
-    pub output_path: PathBuf,
+    pub in_file_gen: ReadFileGen,
+    pub out_file_gen: WriteFileGen,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -51,13 +53,19 @@ fn main() {
 fn app(args: &[String]) -> Result<(), String> {
     let options = parse_options(args)?;
 
-    let file_contents = std::fs::read_to_string(options.input_path)
-        .map_err(|e| format!("failed to open input file: {:?}", e))?;
+    let file_contents = {
+        let mut s = String::new();
+        let mut f =
+            (options.in_file_gen)().map_err(|e| format!("failed to open input file: {:?}", e))?;
+        f.read_to_string(&mut s)
+            .map_err(|e| format!("failed to read from file: {:?}", e))?;
+        s
+    };
 
     let result = parse(&file_contents)?;
 
-    let mut file = std::fs::File::create(&options.output_path)
-        .map_err(|e| format!("failed to open file: {:?}", e))?;
+    let mut file =
+        (options.out_file_gen)().map_err(|e| format!("failed to open output file: {:?}", e))?;
 
     match options.backend {
         Backend::Html => {
@@ -117,20 +125,28 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
         .and_then(|x| x.value.clone())
         .unwrap_or_else(String::new);
 
-    let input_path = match p.get_arg("FILE").and_then(|x| x.value.as_deref()).unwrap() {
-        "-" => PathBuf::from("/dev/stdin".to_string()),
-        other => PathBuf::from(other),
+    let in_file_gen: ReadFileGen = match p.get_arg("FILE").and_then(|x| x.value.as_deref()).unwrap()
+    {
+        "-" => Box::new(|| Ok(Box::new(io::stdin()))),
+        path_ref => {
+            let path = path_ref.to_owned();
+            Box::new(move || File::open(path).and_then(|x| Ok(Box::new(x) as Box<dyn Read>)))
+        }
     };
 
-    let output_path = match p.get_option("--output").and_then(|x| x.value.as_deref()) {
-        Some("-") | None => PathBuf::from("/dev/stdout"),
-        Some(other) => PathBuf::from(other),
+    let out_file_gen: WriteFileGen = match p.get_option("--output").and_then(|x| x.value.as_deref())
+    {
+        Some("-") | None => Box::new(|| Ok(Box::new(io::stdout()))),
+        Some(path_ref) => {
+            let path = path_ref.to_owned();
+            Box::new(move || File::create(path).and_then(|x| Ok(Box::new(x) as Box<dyn Write>)))
+        }
     };
 
     Ok(Options {
         katex_path,
         backend,
-        input_path,
-        output_path,
+        in_file_gen,
+        out_file_gen,
     })
 }
