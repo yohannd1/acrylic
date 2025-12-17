@@ -106,6 +106,10 @@ th, td {
     border-color: var(--col-fg-alt);
 }
 
+svg {
+    max-width: 100%;
+}
+
 /* katex display */
 .katex-display {
     margin: 0.2em;
