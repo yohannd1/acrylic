@@ -138,7 +138,7 @@ where
                 write!(
                     w,
                     "{}",
-                    dot_to_svg(check_arg_word(&fc.args[0]))
+                    dot_to_svg(&check_arg_word(&fc.args[0]))
                         .expect("TODO: proper error message")
                 )?;
             }
@@ -146,10 +146,10 @@ where
                 // FIXME: this should not be output here, as it ends up being inside a <p>
                 // tag, which is not valid.
                 0 => panic!("@code call: not enough args (TODO: proper error message)"),
-                1 => write_code_block(w, check_arg_word(&fc.args[0]))?,
+                1 => write_code_block(w, &check_arg_word(&fc.args[0]))?,
                 2 => {
                     let _lang = check_arg_word(&fc.args[0]);
-                    write_code_block(w, check_arg_word(&fc.args[1]))?;
+                    write_code_block(w, &check_arg_word(&fc.args[1]))?;
                 }
                 _ => panic!("@code call: too many args (TODO: proper error message)"),
             },
@@ -170,15 +170,15 @@ where
                         "@c call: should have a single argument (TODO: proper error message)"
                     );
                 }
-                write_inline_code(w, check_arg_word(&fc.args[0]))?;
+                write_inline_code(w, &check_arg_word(&fc.args[0]))?;
             }
             "ref" => match fc.args.len() {
                 1 => {
                     let arg = check_arg_word(&fc.args[0]);
-                    write_ref(w, arg, arg)?;
+                    write_ref(w, &[Term::Word(arg.clone())], &arg)?;
                 }
                 2 => {
-                    write_ref(w, check_arg_word(&fc.args[1]), check_arg_word(&fc.args[0]))?;
+                    write_ref(w, &fc.args[1], &check_arg_word(&fc.args[0]))?;
                 }
                 argc => panic!(
                     "@ref call: arg count must be 1 or 2 (got {argc}) (TODO: proper error message)"
@@ -376,9 +376,13 @@ fn write_table<W: io::Write>(w: &mut W, args: &[Term]) -> io::Result<()> {
     })
 }
 
-fn write_ref<W: io::Write>(w: &mut W, content: &str, r#ref: &str) -> io::Result<()> {
+fn write_ref<W: io::Write>(w: &mut W, content: &[Term], r#ref: &str) -> io::Result<()> {
     elem(w, "span", [("class", "acr-href"), ("title", r#ref)], |w| {
-        text(w, content)
+        for t in content {
+            write_term(w, t, false)?;
+        }
+
+        Ok(())
     })
 }
 
@@ -413,16 +417,18 @@ fn dot_to_svg(input: &str) -> Result<String, String> {
     }
 }
 
-fn check_arg_word(x: &[Term]) -> &str {
-    if x.len() != 1 {
-        panic!(
-            "argument should have exactly one term (got {}) (TODO: proper error message)",
-            x.len()
-        );
+/// Check and try to collapse a list of terms into a string.
+fn check_arg_word(terms: &[Term]) -> String {
+    let mut ret = String::new();
+
+    for t in terms {
+        match t {
+            Term::Space => ret.push(' '),
+            Term::Word(w) => ret.push_str(w),
+            Term::MaybeDelim(c) => ret.push(*c),
+            other => panic!("expecting string-convertable term, got {other:?} (TODO: proper error message)"),
+        }
     }
 
-    match &x[0] {
-        Term::Word(w) => w,
-        _ => panic!("argument should be a string/word (got {x:?}) (TODO: proper error message)"),
-    }
+    ret
 }
