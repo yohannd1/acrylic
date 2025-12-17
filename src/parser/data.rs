@@ -2,18 +2,26 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
+    /// Whitespace
     Space,
+
+    /// A part of a word that does not have the potential to be a another kind of term.
     Word(String), // TODO: rename to WordPart (as there can be adjacent ones)
+
+    /// A word part that might be treated as a delimeter, needed for `FuncCall` and `List`.
+    MaybeDelim(char),
+
     Tag(String),
     Url(String),
     InlineMath(String),
     DisplayMath(String),
     InlineCode(String),
     InlineBold(String),
+    BulletPrefix(BulletType),
     InlineItalics(String),
     FuncCall(FuncCall),
     TaskPrefix(TaskPrefix),
-    BulletPrefix(BulletType),
+    List(Vec<Vec<Term>>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -44,7 +52,7 @@ pub enum TaskFormat {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FuncCall {
     pub name: String,
-    pub args: Vec<String>,
+    pub args: Vec<Vec<Term>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

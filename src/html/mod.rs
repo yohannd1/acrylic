@@ -187,10 +187,27 @@ where
 
     let attrs_iter = attrs.iter().map(|(a, b)| (a.as_str(), b.as_str()));
     let write_fn = |w: &mut W| {
+        fn check_arg_word(x: &[Term]) -> &str {
+            if x.len() != 1 {
+                panic!(
+                    "argument should have exactly one term (got {}) (TODO: proper error message)",
+                    x.len()
+                );
+            }
+
+            match &x[0] {
+                Term::Word(w) => w,
+                _ => panic!(
+                    "argument should be a string/word (got {x:?}) (TODO: proper error message)"
+                ),
+            }
+        }
+
         for (i, term) in node.contents.iter().enumerate() {
             match term {
                 Term::Space => write!(w, " ")?,
                 Term::Word(x) => write!(w, "{x}")?,
+                Term::MaybeDelim(x) => write!(w, "{x}")?,
                 Term::Tag(x) => elem(w, "span", [("class", "acr-tag")], |w| {
                     text(w, "%")?;
                     text(w, x)
@@ -228,57 +245,67 @@ where
                                 "dot call should have a single argument (TODO: proper error message)"
                             );
                         }
+
                         write!(
                             w,
                             "{}",
-                            dot_to_svg(&fc.args[0]).expect("TODO: proper error message")
+                            dot_to_svg(check_arg_word(&fc.args[0]))
+                                .expect("TODO: proper error message")
                         )?;
                     }
                     "code" => match fc.args.len() {
                         // FIXME: this should not be output here, as it ends up being inside a <p>
                         // tag, which is not valid.
                         0 => panic!("@code call: not enough args (TODO: proper error message)"),
-                        1 => write_code_block(w, &fc.args[0])?,
+                        1 => write_code_block(w, check_arg_word(&fc.args[0]))?,
                         2 => {
-                            let _lang = &fc.args[0];
-                            write_code_block(w, &fc.args[1])?;
+                            let _lang = check_arg_word(&fc.args[0]);
+                            write_code_block(w, check_arg_word(&fc.args[1]))?;
                         }
                         _ => panic!("@code call: too many args (TODO: proper error message)"),
-                    }
+                    },
+
                     "c" => {
                         if fc.args.len() != 1 {
                             panic!(
                                 "@c call: should have a single argument (TODO: proper error message)"
                             );
                         }
-                        write_inline_code(w, &fc.args[0])?;
+                        write_inline_code(w, check_arg_word(&fc.args[0]))?;
                     }
                     "ref" => match fc.args.len() {
-                        1 => write_ref(w, &fc.args[0], &fc.args[0])?,
-                        2 => write_ref(w, &fc.args[1], &fc.args[0])?,
-                        argc => panic!("@ref call: arg count must be 1 or 2 (got {argc}) (TODO: proper error message)")
-                    }
+                        1 => {
+                            let arg = check_arg_word(&fc.args[0]);
+                            write_ref(w, arg, arg)?
+                        }
+                        2 => {
+                            write_ref(w, check_arg_word(&fc.args[1]), check_arg_word(&fc.args[0]))?
+                        }
+                        argc => panic!(
+                            "@ref call: arg count must be 1 or 2 (got {argc}) (TODO: proper error message)"
+                        ),
+                    },
                     other => {
                         panic!("invalid function name: {other:?} (TODO: proper error message)");
                     }
                 },
+                Term::List(_) => panic!(
+                    "list cannot be used outside of a function call that understands it (TODO: proper error message)"
+                ),
             }
         }
 
         Ok(())
     };
 
-    let is_fold = node
-        .contents
-        .iter()
-        .find(|x| {
-            if let Term::Tag(t) = x {
-                t == "-fold"
-            } else {
-                false
-            }
-        })
-        .is_some();
+    fn is_fold_tag(x: &Term) -> bool {
+        match x {
+            Term::Tag(t) => t == "-fold",
+            _ => false,
+        }
+    }
+
+    let is_fold = node.contents.iter().find(|x| is_fold_tag(x)).is_some();
 
     let write_inside = |w: &mut W, thing: &'static str| {
         elem(w, thing, attrs_iter, write_fn)?;

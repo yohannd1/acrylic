@@ -6,7 +6,7 @@ mod html;
 mod parser;
 
 use crate::cli::{CliArg, CliOption, CliParser};
-use crate::html::{write_html, HtmlOptions};
+use crate::html::{HtmlOptions, write_html};
 use crate::parser::parse;
 use std::fs::File;
 use std::io::{self, Read, Write};
@@ -76,7 +76,7 @@ fn app(args: &[String]) -> Result<(), String> {
                 .map_err(|e| format!("failed to write to file: {:?}", e))?;
         }
         Backend::Debug => {
-            write!(&mut file, "{result:?}")
+            write!(&mut file, "{result:#?}\n")
                 .map_err(|e| format!("failed to write to file: {:?}", e))?;
         }
     }

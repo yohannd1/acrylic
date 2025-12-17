@@ -7,9 +7,9 @@
 //!
 //! The data structures used here are all available in the [`data`] module.
 
+pub mod data;
 pub mod stage1;
 pub mod stage2;
-pub mod data;
 
 pub use data::*;
 

@@ -1,4 +1,4 @@
-use crate::parser::{DocumentSt2, Line, Node, DocumentSt1};
+use crate::parser::{DocumentSt1, DocumentSt2, Line, Node};
 
 pub fn parse(doc: DocumentSt1) -> Result<DocumentSt2, String> {
     let mut nodes = Vec::new();
@@ -42,7 +42,10 @@ pub fn parse(doc: DocumentSt1) -> Result<DocumentSt2, String> {
             if line.indent == 0 {
                 stack.push(line_to_node(line));
             } else {
-                return Err(format!("line {}: indented line before any non-indented line", i + 1));
+                return Err(format!(
+                    "line {}: indented line before any non-indented line",
+                    i + 1
+                ));
             }
         } else {
             // pop from the stack if needed

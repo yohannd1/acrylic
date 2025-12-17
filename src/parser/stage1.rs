@@ -322,6 +322,45 @@ impl<'a> DocParser<'a> {
         ret
     }
 
+    pub fn get_term(&mut self) -> Result<Option<Term>, String> {
+        Ok(loop {
+            if let Some(()) = self.get_inline_whitespace() {
+                break Some(Term::Space);
+            } else if let Some(_) = self.get_comment() {
+                // do nothing
+            } else if let Some(x) = self.get_symmetric_delimiter('`')? {
+                break Some(Term::InlineCode(x));
+            } else if let Some(x) = self.get_symmetric_delimiter('*')? {
+                break Some(Term::InlineBold(x));
+            } else if let Some(x) = self.get_symmetric_delimiter('_')? {
+                break Some(Term::InlineItalics(x));
+            } else if let Some(x) = self.get_tag() {
+                break Some(Term::Tag(x));
+            } else if let Some(x) = self.get_list_or_call() {
+                break Some(match x {
+                    (Some(name), args) => Term::FuncCall(FuncCall { name, args }),
+                    (None, args) => Term::List(args),
+                });
+            } else if let Some(x) = self.get_inline_math_a()? {
+                break Some(Term::InlineMath(x));
+            } else if let Some(x) = self.get_inline_math_b()? {
+                break Some(Term::InlineMath(x));
+            } else if let Some(x) = self.get_display_math_a()? {
+                break Some(Term::DisplayMath(x));
+            } else if let Some(x) = self.get_display_math_b()? {
+                break Some(Term::DisplayMath(x));
+            } else if let Some(x) = self.get_url() {
+                break Some(Term::Url(x));
+            } else if let Some(x) = self.get_maybe_delim() {
+                break Some(Term::MaybeDelim(x));
+            } else if let Some(x) = self.get_word_part() {
+                break Some(Term::Word(x));
+            } else {
+                break None;
+            }
+        })
+    }
+
     pub fn get_line(&mut self, options: &StandardOptions) -> Result<Option<Line>, String> {
         if self.peek().is_none() {
             return Ok(None);
@@ -343,47 +382,6 @@ impl<'a> DocParser<'a> {
             }
         };
 
-        /// Response enum for the `get_term` function.
-        enum Resp {
-            Some(Term),
-            None,
-            Skip,
-        }
-
-        fn get_term(p: &mut DocParser) -> Result<Resp, String> {
-            let result = if let Some(()) = p.get_inline_whitespace() {
-                Resp::Some(Term::Space)
-            } else if let Some(_) = p.get_comment() {
-                Resp::Skip
-            } else if let Some(x) = p.get_symmetric_delimiter('`')? {
-                Resp::Some(Term::InlineCode(x))
-            } else if let Some(x) = p.get_symmetric_delimiter('*')? {
-                Resp::Some(Term::InlineBold(x))
-            } else if let Some(x) = p.get_symmetric_delimiter('_')? {
-                Resp::Some(Term::InlineItalics(x))
-            } else if let Some(x) = p.get_tag() {
-                Resp::Some(Term::Tag(x))
-            } else if let Some(x) = p.get_func_call() {
-                Resp::Some(Term::FuncCall(x))
-            } else if let Some(x) = p.get_inline_math_a()? {
-                Resp::Some(Term::InlineMath(x))
-            } else if let Some(x) = p.get_inline_math_b()? {
-                Resp::Some(Term::InlineMath(x))
-            } else if let Some(x) = p.get_display_math_a()? {
-                Resp::Some(Term::DisplayMath(x))
-            } else if let Some(x) = p.get_display_math_b()? {
-                Resp::Some(Term::DisplayMath(x))
-            } else if let Some(x) = p.get_url() {
-                Resp::Some(Term::Url(x))
-            } else if let Some(x) = p.get_word() {
-                Resp::Some(Term::Word(x))
-            } else {
-                Resp::None
-            };
-
-            Ok(result)
-        }
-
         let mut terms = Vec::new();
 
         if let Some(pfx) = p.get_bullet_prefix() {
@@ -395,10 +393,9 @@ impl<'a> DocParser<'a> {
         }
 
         loop {
-            match get_term(&mut p) {
-                Ok(Resp::Some(t)) => terms.push(t),
-                Ok(Resp::None) => break,
-                Ok(Resp::Skip) => {}
+            match p.get_term() {
+                Ok(Some(t)) => terms.push(t),
+                Ok(None) => break,
                 Err(e) => return Err(Self::make_parse_error_msg(self, &p, &e, &terms)),
             }
         }
@@ -419,12 +416,19 @@ impl<'a> DocParser<'a> {
         Ok(Some(Line { indent, terms }))
     }
 
-    /// Parse a word.
-    ///
-    /// A word is a continuous sequence of non-whitespace characters.
-    ///
-    /// It accepts a few escapable chars, as defined in [`is::escapable_char`].
-    pub fn get_word(&mut self) -> Option<String> {
+    pub fn get_maybe_delim(&mut self) -> Option<char> {
+        let mut p = self.clone();
+
+        let c = p.next()?;
+        if !matches!(c, '(' | ')' | '{' | '}') {
+            return None;
+        }
+
+        *self = p;
+        Some(c)
+    }
+
+    pub fn get_word_part(&mut self) -> Option<String> {
         let mut p = self.clone();
 
         let mut first_char = true;
@@ -467,18 +471,18 @@ impl<'a> DocParser<'a> {
         }
     }
 
-    pub fn get_func_call(&mut self) -> Option<FuncCall> {
-        fn get_indent(parser: &mut DocParser) -> Option<String> {
-            let mut p = parser.clone();
-            let mut ret = String::new();
+    fn get_ident(&mut self) -> Option<String> {
+        let mut p = self.clone();
+        let mut ret = String::new();
 
-            ret.extend(p.collect_at_least(1, |c| c.is_ascii_alphabetic())?.chars());
-            ret.extend(p.collect(|c| c.is_ascii_alphanumeric()).chars());
+        ret.extend(p.collect_at_least(1, |c| c.is_ascii_alphabetic())?.chars());
+        ret.extend(p.collect(|c| c.is_ascii_alphanumeric()).chars());
 
-            *parser = p;
-            Some(ret)
-        }
+        *self = p;
+        Some(ret)
+    }
 
+    pub fn get_list_or_call(&mut self) -> Option<(Option<String>, Vec<Vec<Term>>)> {
         fn get_escaped_char(parser: &mut DocParser) -> Option<char> {
             let mut p = parser.clone();
             p.expect_and_skip('\\')?;
@@ -523,36 +527,38 @@ impl<'a> DocParser<'a> {
             Some(ret)
         }
 
-        fn get_arg(parser: &mut DocParser, delim: (char, char)) -> Option<String> {
+        fn get_arg(parser: &mut DocParser, delim: (char, char)) -> Option<Vec<Term>> {
             let mut p = parser.clone();
-            let mut ret = String::new();
-
             let (dl, dr) = delim;
 
             p.expect_and_skip(dl)?;
-            'blk: loop {
-                if let Some(c) = get_escaped_char(&mut p) {
-                    ret.push(c);
-                } else {
-                    match p.peek() {
-                        Some(x) if x == dr => break 'blk,
-                        Some(c) => {
-                            p.step();
-                            ret.push(c);
+
+            let mut terms = Vec::new();
+            loop {
+                match p.get_term() {
+                    Ok(Some(t @ Term::MaybeDelim(dm))) => {
+                        if dm == dr {
+                            break;
+                        } else {
+                            terms.push(t);
                         }
-                        None => break 'blk,
                     }
+                    Ok(Some(t)) => terms.push(t),
+                    Ok(None) => panic!("missing {dr:?} (TODO: proper error message)"),
+                    Err(e) => panic!(
+                        "TODO: proper error message idk {:?}",
+                        DocParser::make_parse_error_msg(parser, &p, &e, &terms)
+                    ),
                 }
             }
-            p.expect_and_skip(dr)?;
 
             *parser = p;
-            Some(ret)
+            Some(terms)
         }
 
         let mut p = self.clone();
         p.expect_and_skip('@')?;
-        let name = get_indent(&mut p)?;
+        let name = p.get_ident();
         let mut args = Vec::new();
         'blk: loop {
             if let Some(arg) = get_arg(&mut p, ('{', '}')) {
@@ -560,7 +566,7 @@ impl<'a> DocParser<'a> {
             } else if let Some(arg) = get_arg(&mut p, ('(', ')')) {
                 args.push(arg);
             } else if let Some(arg) = get_raw_arg(&mut p) {
-                args.push(arg);
+                args.push(vec![Term::Word(arg)]);
             } else {
                 break 'blk;
             }
@@ -571,7 +577,7 @@ impl<'a> DocParser<'a> {
         }
 
         *self = p;
-        Some(FuncCall { name, args })
+        Some((name, args))
     }
 
     pub fn get_url(&mut self) -> Option<String> {
@@ -645,11 +651,7 @@ impl<'a> DocParser<'a> {
                 '-' => TaskState::Cancelled,
                 _ => return None,
             };
-            if p.next()? == end {
-                Some(state)
-            } else {
-                None
-            }
+            if p.next()? == end { Some(state) } else { None }
         };
 
         let (format, state) = match p.next()? {
@@ -698,10 +700,10 @@ impl<'a> DocParser<'a> {
                             return Err(format!(
                                 "(delimiter {:?}) unknown escape sequence: \\{}",
                                 delim, c
-                            ))
+                            ));
                         }
                         None => {
-                            return Err(format!("(delimiter {:?}) unexpected end of line", delim))
+                            return Err(format!("(delimiter {:?}) unexpected end of line", delim));
                         }
                     }
                 }
@@ -743,7 +745,7 @@ mod is {
 
     pub fn word_char(c: char) -> bool {
         match c {
-            '\n' | ' ' | '\t' | '*' | '`' | '$' | '%' => false,
+            '\n' | ' ' | '\t' | '*' | '`' | '$' | '%' | '(' | ')' | '{' | '}' => false,
             _ => true,
         }
     }
