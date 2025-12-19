@@ -329,13 +329,18 @@ fn write_code_block<W: io::Write>(w: &mut W, content: &str) -> io::Result<()> {
 }
 
 fn write_table<W: io::Write>(w: &mut W, args: &[Term]) -> io::Result<()> {
-    let mut it = args.iter();
+    enum Ret<'a> {
+        Row(&'a [Vec<Term>]),
+        Separator,
+    }
 
-    let mut get_next_row = || -> Option<&[Vec<Term>]> {
+    let mut it = args.iter();
+    let mut get_next = || -> Option<Ret> {
         loop {
             match it.next()? {
                 Term::Space => {}
-                Term::List(row) => return Some(row),
+                Term::List(row) => return Some(Ret::Row(row)),
+                Term::Word(s) if s == "---"  => return Some(Ret::Separator),
                 other => {
                     panic!("expected space or list, got {other:?} (TODO: proper error message)");
                 }
@@ -359,17 +364,30 @@ fn write_table<W: io::Write>(w: &mut W, args: &[Term]) -> io::Result<()> {
         })
     };
 
-    let heading_row = get_next_row().expect("no rows are available... (TODO: proper error message)");
+    let heading_row = match get_next() {
+        Some(Ret::Row(row)) => row,
+        Some(Ret::Separator) => panic!("separator uhhh (TODO: proper error message)"),
+        None => panic!("no rows are available... (TODO: proper error message)"),
+    };
     let expect_len = heading_row.len();
+
+    let empty_row = (0..expect_len).map(|_| Vec::new()).collect::<Vec<_>>();
 
     elem(w, "table", [], |w| {
         write_row(w, heading_row, "th")?;
 
-        while let Some(row) = get_next_row() {
-            if row.len() != expect_len {
-                panic!("expected {}-arg row, got {} args", expect_len, row.len());
+        while let Some(val) = get_next() {
+            match val {
+                Ret::Row(row) => {
+                    if row.len() != expect_len {
+                        panic!("expected {}-arg row, got {} args", expect_len, row.len());
+                    }
+                    write_row(w, row, "td")?;
+                }
+                Ret::Separator => {
+                    write_row(w, &empty_row, "td")?;
+                }
             }
-            write_row(w, row, "td")?;
         }
 
         Ok(())
