@@ -130,18 +130,31 @@ fn process_node(n: Node2) -> Result<Node, String> {
 }
 
 fn process_code_block_line(fc: FuncCall) -> Result<Line, String> {
-    if fc.args.len() != 1 {
-        return Err(format!(
-            "`@code` call expects one argument, {} given",
-            fc.args.len()
-        ));
+    match fc.args.len() {
+        1 => {
+            let Some(code) = try_stringify(&fc.args[0]) else {
+                return Err("`@code` call expects string argument, failed to do that...".into());
+            };
+
+            Ok(Line::CodeBlock(code))
+        }
+        2 => {
+            let Some(_lang) = try_stringify(&fc.args[0]) else {
+                return Err("`@code` call expects string argument, failed to do that...".into());
+            };
+
+            let Some(code) = try_stringify(&fc.args[1]) else {
+                return Err("`@code` call expects string argument, failed to do that...".into());
+            };
+
+            Ok(Line::CodeBlock(code))
+        }
+        n => {
+            Err(format!(
+                "`@code` call expects 1 or 2 args, {n} given"
+            ))
+        }
     }
-
-    let Some(arg) = try_stringify(&fc.args[0]) else {
-        return Err("`@code` call expects string argument, failed to do that...".into());
-    };
-
-    Ok(Line::CodeBlock(arg))
 }
 
 fn process_dot_line(fc: FuncCall) -> Result<Line, String> {

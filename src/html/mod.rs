@@ -94,6 +94,10 @@ fn write_katex_header<W: Write>(w: &mut W, katex_path: &str) -> io::Result<()> {
     Ok(())
 }
 
+fn attrs_to_iter<'a>(attrs: &'a [(&'a str, String)]) -> impl Iterator<Item = (&'a str, &'a str)> {
+    attrs.iter().map(|(a, b)| (*a, b.as_str()))
+}
+
 pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Result<()> {
     let mut attrs: Vec<(&str, String)> = Vec::new();
     if indent > 0 {
@@ -106,12 +110,6 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
             Term3::Tag(tag) => tag == "-fold",
             _ => false,
         }
-    }
-
-    fn attrs_to_iter<'a>(
-        attrs: &'a [(&'a str, String)],
-    ) -> impl Iterator<Item = (&'a str, &'a str)> {
-        attrs.iter().map(|(a, b)| (*a, b.as_str()))
     }
 
     let write_text_line = |w: &mut W, tag: &str, line: &TextLine, attrs: &[(&str, String)]| {
@@ -160,7 +158,7 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
             }
         }
         Line::Table(l) => {
-            write_table(w, l.columns, &l.items)?;
+            write_table(w, l.columns, &l.items, &attrs)?;
         }
         Line::CodeBlock(x) => {
             elem(w, "pre", attrs_to_iter(&attrs), |w| {
@@ -278,7 +276,12 @@ fn write_code_block_content<W: Write>(w: &mut W, content: &str) -> io::Result<()
     }
 }
 
-fn write_table<W: Write>(w: &mut W, columns: usize, items: &[TableItem]) -> io::Result<()> {
+fn write_table<W: Write>(
+    w: &mut W,
+    columns: usize,
+    items: &[TableItem],
+    attrs: &[(&str, String)],
+) -> io::Result<()> {
     let mut is_first_row = false;
 
     // Empty row used for the separator (which are, well... empty rows).
@@ -300,7 +303,7 @@ fn write_table<W: Write>(w: &mut W, columns: usize, items: &[TableItem]) -> io::
         })
     };
 
-    elem(w, "table", [], |w| {
+    elem(w, "table", attrs_to_iter(attrs), |w| {
         for item in items {
             match item {
                 TableItem::Row(row) => {
