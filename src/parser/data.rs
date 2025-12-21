@@ -17,11 +17,12 @@ pub enum Term {
     DisplayMath(String),
     InlineCode(String),
     InlineBold(String),
-    BulletPrefix(BulletType),
     InlineItalics(String),
     FuncCall(FuncCall),
-    TaskPrefix(TaskPrefix),
     List(Vec<Vec<Term>>),
+
+    BulletPrefix(BulletType),
+    TaskPrefix(TaskPrefix),
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -2,8 +2,9 @@
 //!
 //! It's organized as a "pipeline" of sorts, with one module per stage:
 //!
-//! - [`stage1`]: does basic parsing, reading a string and returning a collection of lines.
-//! - [`stage2`]: takes the lines and builds a tree from it, based on the indent.
+//! - [`stage1`]: does basic parsing, reading a string and returning a collection of lines;
+//! - [`stage2`]: takes the lines and builds a tree from it, based on the indent;
+//! - [`stage3`]: "formalizes" the tree and guarantees things are in order;
 //!
 //! The data structures used here are all available in the [`data`] module.
 
@@ -11,9 +12,14 @@ pub mod data;
 pub mod stage1;
 pub mod stage2;
 
+pub mod stage3;
+pub use stage3::{Document, Term as Term3, Node as Node3};
+
 pub use data::*;
 
-pub fn parse(string: &str) -> Result<DocumentSt2, String> {
-    let s1 = crate::parser::stage1::parse(&string)?;
-    crate::parser::stage2::parse(s1)
+pub fn parse(input: &str) -> Result<Document, String> {
+    let s1 = stage1::parse(&input)?;
+    let s2 = stage2::parse(s1)?;
+    let s3 = stage3::parse(s2)?;
+    Ok(s3)
 }

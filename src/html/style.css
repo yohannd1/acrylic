@@ -26,9 +26,10 @@ body {
     font-size: 1.08em;
 }
 
-p {
+p, summary {
     margin-top: 0em;
     margin-bottom: 0.1em;
+    padding: 0.08em 0em;
 }
 
 b {
