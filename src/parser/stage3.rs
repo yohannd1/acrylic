@@ -129,6 +129,89 @@ fn process_node(n: Node2) -> Result<Node, String> {
     })
 }
 
+fn process_code_block_arg(arg: &str) -> String {
+    let all_lines: Vec<&str> = arg.split("\n").collect();
+
+    let lines = {
+        let all_len = all_lines.len();
+
+        let start_idx = match all_len > 0 && all_lines[0].trim().is_empty() {
+            true => 1,
+            false => 0,
+        };
+        eprintln!("OK {start_idx:?}");
+
+        let end_idx = match all_len > 0 && all_lines[all_len - 1].trim().is_empty() {
+            true => all_len - 1,
+            false => all_len,
+        };
+
+        &all_lines[start_idx..end_idx]
+    };
+
+    fn get_leading_indent(line: &str) -> usize {
+        let mut ret = 0;
+        for c in line.chars() {
+            match c {
+                ' ' => ret += 1,
+                '\t' => ret += 8,
+                _ => break,
+            }
+        }
+        ret
+    }
+
+    let min_common_space = lines
+        .iter()
+        .map(|line| get_leading_indent(line))
+        .min()
+        .unwrap_or(0);
+
+    fn slice_relevant_part(line: &str, min_common_space: usize) -> String {
+        let mut iter = line.chars().peekable();
+        let mut i = min_common_space as isize;
+
+        while i > 0 {
+            match iter.peek() {
+                Some(' ') => {
+                    i -= 1;
+                    iter.next();
+                }
+                Some('\t') => {
+                    i -= 8;
+                    iter.next();
+                }
+                Some(_) => unreachable!("min_common_space is supposed to be small enough"),
+                None => break,
+            }
+        }
+
+        let mut ret = String::new();
+        while i < 0 {
+            ret.push(' ');
+            i += 1;
+        }
+        ret.extend(iter);
+
+        ret
+    }
+
+    let mut it = lines
+        .iter()
+        .map(|line| slice_relevant_part(line, min_common_space));
+
+    let mut ret = String::new();
+    if let Some(line) = it.next() {
+        ret.push_str(&line);
+    }
+    for line in it {
+        ret.push('\n');
+        ret.push_str(&line);
+    }
+
+    ret
+}
+
 fn process_code_block_line(fc: FuncCall) -> Result<Line, String> {
     match fc.args.len() {
         1 => {
@@ -136,7 +219,7 @@ fn process_code_block_line(fc: FuncCall) -> Result<Line, String> {
                 return Err("`@code` call expects string argument, failed to do that...".into());
             };
 
-            Ok(Line::CodeBlock(code))
+            Ok(Line::CodeBlock(process_code_block_arg(&code)))
         }
         2 => {
             let Some(_lang) = try_stringify(&fc.args[0]) else {
@@ -147,13 +230,9 @@ fn process_code_block_line(fc: FuncCall) -> Result<Line, String> {
                 return Err("`@code` call expects string argument, failed to do that...".into());
             };
 
-            Ok(Line::CodeBlock(code))
+            Ok(Line::CodeBlock(process_code_block_arg(&code)))
         }
-        n => {
-            Err(format!(
-                "`@code` call expects 1 or 2 args, {n} given"
-            ))
-        }
+        n => Err(format!("`@code` call expects 1 or 2 args, {n} given")),
     }
 }
 
@@ -195,7 +274,7 @@ fn process_table_line(mut fc: FuncCall) -> Result<Line, String> {
                 }
                 Some(Term2::Word(s)) if s == "---" => return Ok(Some(TableItem::Separator)),
                 Some(other) => {
-                    return Err(format!("expected space, list or separator, got {other:?}"))
+                    return Err(format!("expected space, list or separator, got {other:?}"));
                 }
             }
         }
@@ -212,7 +291,7 @@ fn process_table_line(mut fc: FuncCall) -> Result<Line, String> {
                             "got rows of different sizes (first {}, then {})",
                             x,
                             r.len()
-                        ))
+                        ));
                     }
                     Some(_) => {}
                     None => last_ncols = Some(r.len()),

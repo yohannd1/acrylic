@@ -10,10 +10,7 @@ use std::io::{self, BufWriter, Write};
 use std::process::{Command, Stdio};
 
 mod primitives;
-
 use primitives::{elem, text};
-
-// TODO: allow other types of errors on return + replace all related assert! and unreachable! calls
 
 #[derive(Debug, Clone)]
 pub struct HtmlOptions<'a> {
@@ -158,7 +155,7 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
         }
         Line::CodeBlock(x) => {
             elem(w, "pre", attrs_to_iter(&attrs), |w| {
-                elem(w, "code", [], |w| write_code_block_content(w, &x))
+                elem(w, "code", [], |w| text(w, &x))
             })?;
         }
         Line::DisplayMath(x) => {
@@ -167,7 +164,11 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
         }
         Line::DotGraph(x) => {
             elem(w, "div", attrs_to_iter(&attrs), |w| {
-                write!(w, "{}", dot_to_svg(&x).expect("failed to run dot TODO(proper error msg)"))
+                write!(
+                    w,
+                    "{}",
+                    dot_to_svg(&x).expect("failed to run dot TODO(proper error msg)")
+                )
             })?;
         }
     }
@@ -220,59 +221,6 @@ fn write_inline_code<W: Write>(w: &mut W, content: &str) -> io::Result<()> {
     elem(w, "code", [("class", "acr-inline-code")], |w| {
         text(w, content)
     })
-}
-
-fn write_code_block_content<W: Write>(w: &mut W, content: &str) -> io::Result<()> {
-    let lines: Vec<_> = content.split("\n").collect();
-
-    let get_leading_indent = |x: &str| {
-        let mut ret: usize = 0;
-        for c in x.chars() {
-            match c {
-                ' ' => ret += 1,
-                '\t' => ret += 8,
-                _ => break,
-            }
-        }
-        ret
-    };
-
-    // FIXME: this is very messy... document this, improve implementation and also remove a
-    // single trailing newline if it exists
-    if lines.len() <= 1 || lines[0].trim().len() > 0 {
-        text(w, content)
-    } else {
-        let leading_indent = get_leading_indent(lines[1]);
-        let subset = &lines[1..];
-        for (line_i, &line) in subset.iter().enumerate() {
-            let mut iter = line.chars().peekable();
-            let mut i = 0;
-            loop {
-                if i >= leading_indent {
-                    break;
-                }
-                let Some(c) = iter.peek() else {
-                    break;
-                };
-                match c {
-                    ' ' => {
-                        i += 1;
-                        iter.next();
-                    }
-                    '\t' => {
-                        i += 8;
-                        iter.next();
-                    }
-                    _ => break,
-                }
-            }
-            text(w, &iter.collect::<String>())?;
-            if line_i < subset.len() - 1 {
-                write!(w, "\n")?;
-            }
-        }
-        Ok(())
-    }
 }
 
 fn write_table<W: Write>(
