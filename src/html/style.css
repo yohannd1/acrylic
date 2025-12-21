@@ -29,7 +29,7 @@ body {
 p, summary {
     margin-top: 0em;
     margin-bottom: 0.1em;
-    padding: 0.08em 0em;
+    padding: 0.06em 0em;
 }
 
 b {
@@ -58,8 +58,7 @@ span.acr-tag {
 }
 
 div.acr-spacing {
-    margin-top: 0em;
-    margin-bottom: 0.85em;
+    margin: 0.85em 0em;
 }
 
 summary:hover {
@@ -113,9 +112,9 @@ svg {
 
 /* katex display */
 .katex-display {
-    margin: 0.2em;
+    margin: 0.1em 0em;
 }
-.katex-display.fleqn>.katex {
+.katex-display.fleqn > .katex {
     padding-left: 0em;
 }
 

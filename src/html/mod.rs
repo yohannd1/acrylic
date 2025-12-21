@@ -140,10 +140,6 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
         })?;
         write!(w, "\n")?;
 
-        for child in &node.children {
-            write_node(w, child, indent + 1)?;
-        }
-
         Ok(())
     };
 
@@ -167,18 +163,21 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
         }
         Line::DisplayMath(x) => {
             attrs.push(("class", "katex-display".into()));
-            elem(w, "p", attrs_to_iter(&attrs), |w| text(w, &x))?; // FIXME: do i need to make a span
-                                                                   // inside a <p> here
+            elem(w, "p", attrs_to_iter(&attrs), |w| text(w, &x))?;
         }
         Line::DotGraph(x) => {
             elem(w, "div", attrs_to_iter(&attrs), |w| {
-                write!(w, "{}", dot_to_svg(&x).expect("TODO(proper error msg)"))
+                write!(w, "{}", dot_to_svg(&x).expect("failed to run dot TODO(proper error msg)"))
             })?;
         }
     }
 
     if node.bottom_spacing {
         writeln!(w, r#"<div class="acr-spacing"></div>"#)?;
+    }
+
+    for child in &node.children {
+        write_node(w, child, indent + 1)?;
     }
 
     Ok(())
