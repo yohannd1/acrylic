@@ -13,7 +13,7 @@ pub mod stage1;
 pub mod stage2;
 
 pub mod stage3;
-pub use stage3::{Document, Term as Term3, Node as Node3};
+pub use stage3::{Document, Node as Node3, Term as Term3};
 
 pub use data::*;
 

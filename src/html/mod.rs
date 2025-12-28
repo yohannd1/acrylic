@@ -8,6 +8,7 @@ use crate::parser::{
 };
 use std::io::{self, BufWriter, Write};
 use std::process::{Command, Stdio};
+use std::collections::HashMap;
 
 mod primitives;
 use primitives::{elem, text};
@@ -17,6 +18,8 @@ pub struct HtmlOptions<'a> {
     /// The path to the KaTeX resources - must be either a relative unix path or a valid URI prefix.
     pub katex_path: &'a str,
 }
+
+type AttrsMap<'a> = HashMap<&'a str, String>;
 
 const HEADER_METATAGS: &'static str = concat!(
     r#"<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>"#,
@@ -91,15 +94,20 @@ fn write_katex_header<W: Write>(w: &mut W, katex_path: &str) -> io::Result<()> {
     Ok(())
 }
 
-fn attrs_to_iter<'a>(attrs: &'a [(&'a str, String)]) -> impl Iterator<Item = (&'a str, &'a str)> {
+fn attrs_to_iter<'a>(attrs: &'a AttrsMap<'a>) -> impl Iterator<Item = (&'a str, &'a str)> {
+    attrs.iter().map(|(a, b)| (*a, b.as_str()))
+}
+
+fn attrs_list_to_iter<'a>(attrs: &'a [(&'a str, String)]) -> impl Iterator<Item = (&'a str, &'a str)> {
     attrs.iter().map(|(a, b)| (*a, b.as_str()))
 }
 
 pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Result<()> {
-    let mut attrs: Vec<(&str, String)> = Vec::new();
+    let mut attrs: AttrsMap<'_> = HashMap::new();
+
     if indent > 0 {
-        let style = format!("margin-left: {:.2}em", indent as f32 * SPACE_PER_INDENT_EM);
-        attrs.push(("style", style));
+        let style = format!("margin-left: {:.2}em;", indent as f32 * SPACE_PER_INDENT_EM);
+        attrs.insert("style", style);
     }
 
     fn is_fold_tag(term: &Term3) -> bool {
@@ -109,7 +117,7 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
         }
     }
 
-    let write_text_line = |w: &mut W, tag: &str, line: &TextLine, attrs: &[(&str, String)]| {
+    let write_text_line = |w: &mut W, tag: &str, line: &TextLine, attrs: &AttrsMap<'_>| {
         elem(w, tag, attrs_to_iter(&attrs), |w| {
             if let Some(pfx) = &line.bullet {
                 match pfx {
@@ -159,7 +167,7 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
             })?;
         }
         Line::DisplayMath(x) => {
-            attrs.push(("class", "katex-display".into()));
+            attrs.insert("class", "katex-display".into());
             elem(w, "p", attrs_to_iter(&attrs), |w| text(w, &x))?;
         }
         Line::DotGraph(x) => {
@@ -169,6 +177,23 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
                     "{}",
                     dot_to_svg(&x).expect("failed to run dot TODO(proper error msg)")
                 )
+            })?;
+        }
+        Line::Image(x) => {
+            attrs.entry("style").or_insert_with(|| String::new()).push_str(" text-align: center;");
+
+            elem(w, "div", attrs_to_iter(&attrs), |w| {
+                let mut a_img = vec![("src", x.url.trim().to_owned())];
+                if let Some(c) = &x.caption {
+                    a_img.push(("alt", c.clone()));
+                }
+
+                elem(w, "img", attrs_list_to_iter(&a_img), |_| Ok(()))?;
+                if let Some(c) = &x.caption {
+                    elem(w, "p", attrs_list_to_iter(&[]), |w| text(w, &c))?;
+                }
+
+                Ok(())
             })?;
         }
     }
@@ -227,7 +252,7 @@ fn write_table<W: Write>(
     w: &mut W,
     columns: usize,
     items: &[TableItem],
-    attrs: &[(&str, String)],
+    attrs: &AttrsMap<'_>,
 ) -> io::Result<()> {
     let mut is_first_row = false;
 

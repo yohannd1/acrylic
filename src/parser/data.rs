@@ -12,7 +12,6 @@ pub enum Term {
     MaybeDelim(char),
 
     Tag(String),
-    Url(String),
     InlineMath(String),
     DisplayMath(String),
     InlineCode(String),

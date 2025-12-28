@@ -6,7 +6,7 @@ mod html;
 mod parser;
 
 use crate::cli::{CliArg, CliOption, CliParser};
-use crate::html::{HtmlOptions, write_html};
+use crate::html::{write_html, HtmlOptions};
 use crate::parser::parse;
 use std::fs::File;
 use std::io::{self, Read, Write};
@@ -34,6 +34,7 @@ pub struct Options {
 pub enum Backend {
     Html,
     Debug,
+    None,
 }
 
 fn main() {
@@ -79,6 +80,7 @@ fn app(args: &[String]) -> Result<(), String> {
             write!(&mut file, "{result:#?}\n")
                 .map_err(|e| format!("failed to write to file: {:?}", e))?;
         }
+        Backend::None => {}
     }
 
     Ok(())
@@ -100,7 +102,7 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
     p.add_option(CliOption {
         name: "--backend".into(),
         short: "-b".into(),
-        help: "the output backend (defaults to HTML)".into(),
+        help: "the output backend (options: html, debug, none; default: html)".into(),
         has_arg: true,
         value: None,
     });
@@ -117,6 +119,7 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
     let backend = match p.get_option("--backend").and_then(|x| x.value.as_deref()) {
         Some("html") | None => Backend::Html,
         Some("debug") => Backend::Debug,
+        Some("none") => Backend::None,
         Some(x) => return Err(p.error_help(format!("Unknown backend {x:?}"))),
     };
 

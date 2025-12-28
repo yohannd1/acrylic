@@ -349,8 +349,6 @@ impl<'a> DocParser<'a> {
                 break Some(Term::DisplayMath(x));
             } else if let Some(x) = self.get_display_math_b()? {
                 break Some(Term::DisplayMath(x));
-            } else if let Some(x) = self.get_url() {
-                break Some(Term::Url(x));
             } else if let Some(x) = self.get_maybe_delim() {
                 break Some(Term::MaybeDelim(x));
             } else if let Some(x) = self.get_word_part() {
@@ -582,24 +580,6 @@ impl<'a> DocParser<'a> {
         Some((name, args))
     }
 
-    pub fn get_url(&mut self) -> Option<String> {
-        let mut p = self.clone();
-        let mut ret = String::new();
-
-        ret.extend(p.collect_at_least(1, |c| c.is_ascii_alphabetic())?.chars());
-        p.expect_and_skip(':')?;
-        p.expect_and_skip('/')?;
-        p.expect_and_skip('/')?;
-        ret.push_str("://");
-        ret.extend(
-            p.collect_at_least(1, |c| !is::inline_whitespace(c) && c != '\n')?
-                .chars(),
-        );
-
-        *self = p;
-        Some(ret)
-    }
-
     pub fn get_comment(&mut self) -> Option<String> {
         let mut p = self.clone();
 
@@ -730,7 +710,7 @@ impl<'a> DocParser<'a> {
 }
 
 /// Collection of methods for checking a character.
-mod is {
+pub mod is {
     pub fn escapable_char(c: char) -> bool {
         match c {
             '\\' | '@' | '$' | '%' | '*' | '_' | '`' => true,
@@ -807,28 +787,36 @@ mod tests {
         assert_terms!(&res, [FuncCall(_)]);
         let FuncCall(ref fc) = res[0] else { panic!() };
         assert_eq!(fc.name, "bar");
-        assert_eq!(fc.args, vec!["baz"]);
+        assert_eq!(fc.args, vec![vec![Term::Word("baz".into())]]);
 
         // Two args
         let res = parse_single_line("@foo{bar}{baz}");
         assert_terms!(&res, [FuncCall(_)]);
         let FuncCall(ref fc) = res[0] else { panic!() };
         assert_eq!(fc.name, "foo");
-        assert_eq!(fc.args, vec!["bar", "baz"]);
+        assert_eq!(fc.args, vec![
+            vec![Term::Word("bar".into())],
+            vec![Term::Word("baz".into())]
+        ]);
 
         // Paren arg
         let res = parse_single_line("@foo(bar){baz}");
         assert_terms!(&res, [FuncCall(_)]);
         let FuncCall(ref fc) = res[0] else { panic!() };
         assert_eq!(fc.name, "foo");
-        assert_eq!(fc.args, vec!["bar", "baz"]);
+        assert_eq!(fc.args, vec![
+            vec![Term::Word("bar".into())],
+            vec![Term::Word("baz".into())]
+        ]);
 
         // Raw arg
         let res = parse_single_line("@bar#{ idk man { ksdljakld } }#");
         assert_terms!(&res, [FuncCall(_)]);
         let FuncCall(ref fc) = res[0] else { panic!() };
         assert_eq!(fc.name, "bar");
-        assert_eq!(fc.args, vec![" idk man { ksdljakld } "]);
+        assert_eq!(fc.args, vec![
+            vec![Term::Word(" idk man { ksdljakld } ".into())],
+        ]);
     }
 
     fn should_parse(should: bool, string: &str) {

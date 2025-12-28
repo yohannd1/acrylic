@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 pub use crate::parser::data::{BulletType, StandardOptions, TaskPrefix, TaskState};
-use crate::parser::data::{DocumentSt2, FuncCall, Node as Node2, Term as Term2};
+use crate::parser::{
+    data::{DocumentSt2, FuncCall, Node as Node2, Term as Term2},
+    stage1::is,
+};
 
 #[derive(Debug, Clone)]
 pub struct Document {
@@ -21,6 +24,7 @@ pub struct Node {
 pub enum Line {
     Text(TextLine),
     Table(TableLine),
+    Image(ImageLine),
     CodeBlock(String),
     DisplayMath(String),
     DotGraph(String),
@@ -37,6 +41,12 @@ pub struct TextLine {
 pub struct TableLine {
     pub columns: usize,
     pub items: Vec<TableItem>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImageLine {
+    pub caption: Option<String>,
+    pub url: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -112,6 +122,7 @@ fn process_node(n: Node2) -> Result<Node, String> {
             "code" => process_code_block_line(extract_only_func(&mut it, "code")?),
             "dot" => process_dot_line(extract_only_func(&mut it, "dot")?),
             "table" => process_table_line(extract_only_func(&mut it, "table")?),
+            "image" => process_image_line(extract_only_func(&mut it, "image")?),
             _ => process_line(&mut it),
         }?,
         _ => process_line(&mut it)?,
@@ -139,7 +150,6 @@ fn process_code_block_arg(arg: &str) -> String {
             true => 1,
             false => 0,
         };
-        eprintln!("OK {start_idx:?}");
 
         let end_idx = match all_len > 0 && all_lines[all_len - 1].trim().is_empty() {
             true => all_len - 1,
@@ -251,6 +261,28 @@ fn process_dot_line(fc: FuncCall) -> Result<Line, String> {
     Ok(Line::DotGraph(arg))
 }
 
+fn process_image_line(fc: FuncCall) -> Result<Line, String> {
+    match fc.args.len() {
+        1 => {
+            let url =
+                try_stringify(&fc.args[0]).ok_or_else(|| format!("failed to stringify arg 1"))?;
+            Ok(Line::Image(ImageLine { caption: None, url }))
+        }
+        2 => {
+            let mut it = fc.args.into_iter();
+            let caption = try_stringify(&it.next().unwrap())
+                .ok_or_else(|| format!("failed to stringify arg 1"))?;
+            let url = try_stringify(&it.next().unwrap())
+                .ok_or_else(|| format!("failed to stringify arg 2"))?;
+            Ok(Line::Image(ImageLine {
+                caption: Some(caption),
+                url,
+            }))
+        }
+        n => Err(format!("`@image` call expects 1 or 2 arguments, {n} given")),
+    }
+}
+
 fn process_table_line(mut fc: FuncCall) -> Result<Line, String> {
     if fc.args.len() != 1 {
         return Err(format!(
@@ -356,7 +388,11 @@ fn process_terms(it: &mut impl Iterator<Item = Term2>) -> Result<Vec<Term>, Stri
                     it.next();
                 }
                 _ => {
-                    ret.push(Term::Word(word_acc));
+                    if is_url(&word_acc) {
+                        ret.push(Term::Url(word_acc));
+                    } else {
+                        ret.push(Term::Word(word_acc));
+                    }
                     word_acc = String::new();
                 }
             }
@@ -366,7 +402,6 @@ fn process_terms(it: &mut impl Iterator<Item = Term2>) -> Result<Vec<Term>, Stri
                 Term2::Word(w) => word_acc = w,
                 Term2::MaybeDelim(c) => word_acc.push(c),
                 Term2::Tag(t) => ret.push(Term::Tag(t)),
-                Term2::Url(x) => ret.push(Term::Url(x)),
                 Term2::InlineMath(x) => ret.push(Term::Math(x)),
                 Term2::InlineCode(x) => ret.push(Term::Code(x)),
                 Term2::InlineBold(x) => ret.push(Term::Bold(x)),
@@ -398,6 +433,11 @@ fn process_terms(it: &mut impl Iterator<Item = Term2>) -> Result<Vec<Term>, Stri
                         }
                         n => return Err(format!("`@ref` call must have 1 or 2 args, got {n}")),
                     },
+                    name @ ("code" | "dot" | "table" | "image") => {
+                        return Err(format!(
+                            "function {name:?} should be on the beginning of the line"
+                        ))
+                    }
                     name => return Err(format!("unknown function {name:?}")),
                 }),
                 Term2::List(_)
@@ -413,6 +453,34 @@ fn process_terms(it: &mut impl Iterator<Item = Term2>) -> Result<Vec<Term>, Stri
     Ok(ret)
 }
 
+#[rustfmt::skip]
+pub fn is_url(s: &str) -> bool {
+    let mut it = s.chars().peekable();
+
+    let mut pfx_cnt: usize = 0;
+    loop {
+        let Some(c) = it.peek() else { break; };
+        if !c.is_ascii_alphabetic() { break; }
+        _ = it.next();
+        pfx_cnt += 1;
+    }
+    if pfx_cnt == 0 {
+        return false;
+    }
+
+    let Some(':') = it.next() else { return false; };
+    let Some('/') = it.next() else { return false; };
+    let Some('/') = it.next() else { return false; };
+
+    loop {
+        let Some(c) = it.peek() else { break; };
+        if is::inline_whitespace(*c) { return false; }
+        _ = it.next();
+    }
+
+    it.next().is_none()
+}
+
 fn try_stringify(terms: &[Term2]) -> Option<String> {
     let mut ret = String::new();
 
@@ -421,9 +489,23 @@ fn try_stringify(terms: &[Term2]) -> Option<String> {
             Term2::Space => ret.push(' '),
             Term2::Word(w) => ret.push_str(w),
             Term2::MaybeDelim(c) => ret.push(*c),
-            _ => return None,
+            x => {
+                eprintln!("info: stringify failed because found {x:?}");
+                return None;
+            }
         }
     }
 
     Some(ret)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Term::*, *};
+
+    #[test]
+    fn valid_urls() {
+        assert!(!is_url(""));
+        assert!(is_url("https://google.com/"));
+    }
 }
