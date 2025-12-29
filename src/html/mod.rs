@@ -254,7 +254,7 @@ fn write_table<W: Write>(
     items: &[TableItem],
     attrs: &AttrsMap<'_>,
 ) -> io::Result<()> {
-    let mut is_first_row = false;
+    let mut is_first_row = true;
 
     // Empty row used for the separator (which are, well... empty rows).
     let empty_row = (0..columns).map(|_| Vec::new()).collect::<Vec<_>>();
@@ -281,7 +281,7 @@ fn write_table<W: Write>(
                 TableItem::Row(row) => {
                     let cell_tag = if is_first_row { "th" } else { "td" };
                     write_row(w, &row, cell_tag)?;
-                    is_first_row = true;
+                    is_first_row = false;
                 }
                 TableItem::Separator => write_row(w, &empty_row, "td")?,
             }
