@@ -173,11 +173,16 @@ fn process_code_block_arg(arg: &str) -> String {
 
     let min_common_space = lines
         .iter()
+        .filter(|line| !line.trim().is_empty())
         .map(|line| get_leading_indent(line))
         .min()
         .unwrap_or(0);
 
     fn slice_relevant_part(line: &str, min_common_space: usize) -> String {
+        if line.trim().is_empty() {
+            return String::from("");
+        }
+
         let mut iter = line.chars().peekable();
         let mut i = min_common_space as isize;
 
