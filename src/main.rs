@@ -14,11 +14,6 @@ use std::io::{self, Read, Write};
 // TODO: make tests for stage1 - conditions where each type of term parses
 //
 // TODO: make tests for stage2 - mostly the indent and spacing stuff
-//
-// TODO: pipeline stage 3 - some terms become line attributes or types of lines - display math
-// becomes its own kind of line; task prefixes can affect the style of the entire line; bullet point
-// styles; and i might be able to more efficiently handle spacing at the end of fold blocks (they
-// shouldn't be hidden inside it) ...
 
 pub type ReadFileGen = Box<dyn FnOnce() -> io::Result<Box<dyn Read>>>;
 pub type WriteFileGen = Box<dyn FnOnce() -> io::Result<Box<dyn Write>>>;
@@ -32,8 +27,13 @@ pub struct Options {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Backend {
+    /// HTML output
     Html,
+
+    /// Rust debug print
     Debug,
+
+    /// Nothing (useful for validation)
     None,
 }
 

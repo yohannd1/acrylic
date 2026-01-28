@@ -44,7 +44,11 @@ Finished %-fold
     }#
     }##
 
-( ) Define a list of all builtin functions
+( ) Define a list of all builtin functions (kind of a standard)
+
+( ) Think about keyword arguments
+  Since I'm going towards a lispy way anyway, I probabvly will just optionally parse an argument as a list of paired stringifiable words.
+  So, for example: `@dot{engine @"fpl"}` would be valid
 
 ( ) Bug fix - folds eat up the spacing between them and the next element
   - I can think of a quick fix for that, but it'll make things messy (the idea would be to just check whether a `div.spacing` is the last element of the fold and, if it is, just pop it off)
@@ -56,10 +60,6 @@ Finished %-fold
 ( ) Treesitter plugin
 
 ( ) Custom functions (use either Lua or Janet - I'd like Janet but I'm not sure how much I can sandbox it)
-
-( ) Formalize function call syntax
-  - Should it allow nested nodes as arguments?
-  - Keyword arguments with... `[param={val}]` I think?
 
 ( ) Think about folds
   - At the moment there's `%-fold` and `@fold`. Neither feel good imo. I'd like to think of something better.

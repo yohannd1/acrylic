@@ -25,9 +25,9 @@ pub enum Line {
     Text(TextLine),
     Table(TableLine),
     Image(ImageLine),
+    DotGraph(DotGraphLine),
     CodeBlock(String),
     DisplayMath(String),
-    DotGraph(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -47,6 +47,12 @@ pub struct TableLine {
 pub struct ImageLine {
     pub caption: Option<String>,
     pub url: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DotGraphLine {
+    pub engine: String,
+    pub code: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -252,18 +258,25 @@ fn process_code_block_line(fc: FuncCall) -> Result<Line, String> {
 }
 
 fn process_dot_line(fc: FuncCall) -> Result<Line, String> {
-    if fc.args.len() != 1 {
-        return Err(format!(
-            "`@dot` call expects one argument, {} given",
-            fc.args.len()
-        ));
+    match fc.args.len() {
+        1 => {
+            let code =
+                try_stringify(&fc.args[0]).ok_or_else(|| format!("failed to stringify arg 1"))?;
+            Ok(Line::DotGraph(DotGraphLine {
+                engine: "dot".into(),
+                code,
+            }))
+        }
+        2 => {
+            let mut it = fc.args.into_iter();
+            let engine = try_stringify(&it.next().unwrap())
+                .ok_or_else(|| format!("failed to stringify arg 1"))?;
+            let code = try_stringify(&it.next().unwrap())
+                .ok_or_else(|| format!("failed to stringify arg 2"))?;
+            Ok(Line::DotGraph(DotGraphLine { engine, code }))
+        }
+        n => Err(format!("`@dot` call expects 1 or 2 arguments, {n} given")),
     }
-
-    let Some(arg) = try_stringify(&fc.args[0]) else {
-        return Err("`@dot` call expects string argument, failed to do that...".into());
-    };
-
-    Ok(Line::DotGraph(arg))
 }
 
 fn process_image_line(fc: FuncCall) -> Result<Line, String> {

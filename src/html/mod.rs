@@ -175,7 +175,7 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
                 write!(
                     w,
                     "{}",
-                    dot_to_svg(&x).expect("failed to run dot TODO(proper error msg)")
+                    dot_to_svg(&x.code, &x.engine).expect("failed to run dot TODO(proper error msg)")
                 )
             })?;
         }
@@ -291,9 +291,9 @@ fn write_table<W: Write>(
     })
 }
 
-fn dot_to_svg(input: &str) -> Result<String, String> {
+fn dot_to_svg(input: &str, engine: &str) -> Result<String, String> {
     let mut child = Command::new("dot")
-        .args(&["-Tsvg_inline"])
+        .args(&["-K", engine, "-T", "svg_inline"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
