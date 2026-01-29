@@ -6,9 +6,9 @@ use crate::parser::{
     stage3::{BulletType, Document, Line, TableItem, TaskPrefix, TaskState, TextLine},
     Node3, Term3,
 };
+use std::collections::HashMap;
 use std::io::{self, BufWriter, Write};
 use std::process::{Command, Stdio};
-use std::collections::HashMap;
 
 mod primitives;
 use primitives::{elem, text};
@@ -98,7 +98,9 @@ fn attrs_to_iter<'a>(attrs: &'a AttrsMap<'a>) -> impl Iterator<Item = (&'a str, 
     attrs.iter().map(|(a, b)| (*a, b.as_str()))
 }
 
-fn attrs_list_to_iter<'a>(attrs: &'a [(&'a str, String)]) -> impl Iterator<Item = (&'a str, &'a str)> {
+fn attrs_list_to_iter<'a>(
+    attrs: &'a [(&'a str, String)],
+) -> impl Iterator<Item = (&'a str, &'a str)> {
     attrs.iter().map(|(a, b)| (*a, b.as_str()))
 }
 
@@ -175,12 +177,16 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
                 write!(
                     w,
                     "{}",
-                    dot_to_svg(&x.code, &x.engine).expect("failed to run dot TODO(proper error msg)")
+                    dot_to_svg(&x.code, &x.engine)
+                        .expect("failed to run dot TODO(proper error msg)")
                 )
             })?;
         }
         Line::Image(x) => {
-            attrs.entry("style").or_insert_with(|| String::new()).push_str(" text-align: center;");
+            attrs
+                .entry("style")
+                .or_insert_with(|| String::new())
+                .push_str(" text-align: center;");
 
             elem(w, "div", attrs_to_iter(&attrs), |w| {
                 let mut a_img = vec![("src", x.url.trim().to_owned())];
@@ -256,9 +262,6 @@ fn write_table<W: Write>(
 ) -> io::Result<()> {
     let mut is_first_row = true;
 
-    // Empty row used for the separator (which are, well... empty rows).
-    let empty_row = (0..columns).map(|_| Vec::new()).collect::<Vec<_>>();
-
     let write_row = |w: &mut W, row: &[Vec<Term3>], cell_tag: &str| {
         elem(w, "tr", [], |w| {
             for arg in row {
@@ -283,7 +286,12 @@ fn write_table<W: Write>(
                     write_row(w, &row, cell_tag)?;
                     is_first_row = false;
                 }
-                TableItem::Separator => write_row(w, &empty_row, "td")?,
+                // TableItem::Separator => write_row(w, &empty_row, "td")?,
+                TableItem::Separator => elem(w, "tr", [], |w| {
+                    elem(w, "th", attrs_list_to_iter(&[("colspan", format!("{}", columns))]), |_| {
+                        Ok(())
+                    })
+                })?,
             }
         }
 
