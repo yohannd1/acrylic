@@ -1,7 +1,7 @@
 %:title Hello, world!
-%:tags project
+%:tags demo
 
-This is a file with every possible language construct I can think of.
+This is a file with every possible construct I can think of.
 
 ---
 
@@ -74,6 +74,36 @@ This is a fold with a nested sub-fold %-fold
 
     Please work. pelase work. please work.
 
-TODO: table
-TODO: code block
-TODO: dot graph
+There are tables:
+  @table{
+    @{foo}{bar}{baz}
+    @{abc}{def}{ghi}
+    @{abc}{def}{ghi}
+    ---
+    @{yeah}{there are}{separators!}
+  }
+
+Tables work this way:
+  @code#{
+  @table{
+    @{foo}{bar}{baz}
+    @{abc}{def}{ghi}
+    @{abc}{def}{ghi}
+    ---
+    @{yeah}{there are}{separators!}
+  }
+  }#
+  %% ^ This is the syntax for a code block!
+
+  These `@{...}{...}` thingies are lists, and they count as a term inside the table. On a table, all of these are rows and must have the same length.
+  The `---` is turned into a separator.
+
+You can also do DOT graphs:
+  @dot#{
+  digraph {
+    a -> b -> c
+    b -> d
+  }
+  }#
+  It's just DOT code embedded inside a `@dot` call.
+  Depends on `graphviz`.
