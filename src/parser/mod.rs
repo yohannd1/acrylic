@@ -2,7 +2,8 @@
 //!
 //! It's organized as a "pipeline" of sorts, with one module per stage:
 //!
-//! - [`stage1`]: does basic parsing, reading a string and returning a collection of lines;
+//! - [`stage1`]: does basic parsing, reading a string and returning a collection of lines with
+//! tokens (terms);
 //!
 //! - [`stage2`]: takes the lines and builds a tree from it, based on the indent;
 //!

@@ -679,18 +679,18 @@ impl<'a> DocParser<'a> {
                             p = p2;
                         }
                         Some(c) => {
-                            return Err(format!(
-                                "(delimiter {:?}) unknown escape sequence: \\{}",
-                                delim, c
-                            ));
+                            ret.push('\\');
+                            ret.push(c);
+                            p2.step();
+                            p = p2;
                         }
                         None => {
-                            return Err(format!("(delimiter {:?}) unexpected end of line", delim));
+                            return Err(format!("(delimiter {delim:?}) unexpected end of input"));
                         }
                     }
                 }
                 Some('\n') | None => {
-                    return Err(format!("(delimiter {:?}) unexpected end of line", delim));
+                    return Err(format!("(delimiter {delim:?}) unexpected end of line"));
                 }
                 Some(c) => {
                     ret.push(c);
@@ -778,6 +778,21 @@ mod tests {
             "foo ${bar} baz",
             [Word(_), Space, InlineMath(_), Space, Word(_)]
         );
+    }
+
+    #[test]
+    fn symmetric_delims() {
+        let prs = |x: &str, expected: &str| {
+            let terms = parse_single_line(x);
+            assert!(terms.len() == 1);
+            let InlineCode(ref x) = terms[0] else { panic!("failed to unwrap code") };
+            assert_eq!(x, expected);
+        };
+
+        prs(r#"`bar`"#, "bar");
+        prs(r#"`bar\nbaz`"#, "bar\\nbaz");
+        prs(r#"`bar\baz`"#, "bar\\baz");
+        prs(r#"`bar\`baz`"#, "bar`baz");
     }
 
     #[test]
