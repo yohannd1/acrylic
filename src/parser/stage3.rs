@@ -26,7 +26,7 @@ pub enum Line {
     Table(TableLine),
     Image(ImageLine),
     DotGraph(DotGraphLine),
-    CodeBlock(String),
+    CodeBlock(CodeBlockLine),
     DisplayMath(String),
 }
 
@@ -52,6 +52,12 @@ pub struct ImageLine {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DotGraphLine {
     pub engine: String,
+    pub code: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CodeBlockLine {
+    pub lang: Option<String>,
     pub code: String,
 }
 
@@ -240,10 +246,13 @@ fn process_code_block_line(fc: FuncCall) -> Result<Line, String> {
                 return Err("`@code` call expects string argument, failed to do that...".into());
             };
 
-            Ok(Line::CodeBlock(process_code_block_arg(&code)))
+            Ok(Line::CodeBlock(CodeBlockLine {
+                lang: None,
+                code: process_code_block_arg(&code),
+            }))
         }
         2 => {
-            let Some(_lang) = try_stringify(&fc.args[0]) else {
+            let Some(lang) = try_stringify(&fc.args[0]) else {
                 return Err("`@code` call expects string argument, failed to do that...".into());
             };
 
@@ -251,7 +260,10 @@ fn process_code_block_line(fc: FuncCall) -> Result<Line, String> {
                 return Err("`@code` call expects string argument, failed to do that...".into());
             };
 
-            Ok(Line::CodeBlock(process_code_block_arg(&code)))
+            Ok(Line::CodeBlock(CodeBlockLine {
+                lang: Some(lang),
+                code: process_code_block_arg(&code),
+            }))
         }
         n => Err(format!("`@code` call expects 1 or 2 args, {n} given")),
     }
@@ -519,7 +531,7 @@ fn try_stringify(terms: &[Term2]) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Term::*, *};
+    use super::*;
 
     #[test]
     fn valid_urls() {

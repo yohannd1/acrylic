@@ -64,6 +64,10 @@ pub fn write_html<W: Write>(
     })
 }
 
+fn do_nothing<T>(_: &mut T) -> io::Result<()> {
+    Ok(())
+}
+
 fn write_katex_header<W: Write>(w: &mut W, katex_path: &str) -> io::Result<()> {
     let prefix = if katex_path.len() > 0 && !katex_path.ends_with("/") {
         format!("{katex_path}/")
@@ -71,25 +75,21 @@ fn write_katex_header<W: Write>(w: &mut W, katex_path: &str) -> io::Result<()> {
         katex_path.to_owned()
     };
 
-    elem(
-        w,
-        "link",
-        [
-            ("rel", "stylesheet"),
-            ("href", format!("{prefix}katex.min.css").as_str()),
-        ],
-        |_| Ok(()),
-    )?;
-    elem(
-        w,
-        "script",
-        [
-            ("src", format!("{prefix}katex.min.js").as_str()),
-            ("defer", "true"),
-        ],
-        |_| Ok(()),
-    )?;
-    write!(w, "<script>{}</script>", INIT_JS)?;
+    let write_css_link = |w: &mut W, href: &str| {
+        let attrs = [("rel", "stylesheet"), ("href", href)];
+        elem(w, "link", attrs, do_nothing)
+    };
+
+    let write_js_link = |w: &mut W, href: &str| {
+        let attrs = [("defer", "true"), ("src", href)];
+        elem(w, "script", attrs, do_nothing)
+    };
+
+    write_css_link(w, &format!("{prefix}katex.min.css"))?;
+    write_js_link(w, &format!("{prefix}katex.min.js"))?;
+    write_css_link(w, &format!("{prefix}prism.css"))?;
+    write_js_link(w, &format!("{prefix}prism.js"))?;
+    write!(w, "\n<script>{}</script>\n", INIT_JS)?;
 
     Ok(())
 }
@@ -164,8 +164,13 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
             write_table(w, l.columns, &l.items, &attrs)?;
         }
         Line::CodeBlock(x) => {
+            let mut cattrs = AttrsMap::new();
+            if let Some(ref lang) = x.lang {
+                cattrs.insert("class", format!("lang-{lang}"));
+            }
+
             elem(w, "pre", attrs_to_iter(&attrs), |w| {
-                elem(w, "code", [], |w| text(w, &x))
+                elem(w, "code", attrs_to_iter(&cattrs), |w| text(w, &x.code))
             })?;
         }
         Line::DisplayMath(x) => {
@@ -173,13 +178,11 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
             elem(w, "p", attrs_to_iter(&attrs), |w| text(w, &x))?;
         }
         Line::DotGraph(x) => {
+            let svg_text =
+                dot_to_svg(&x.code, &x.engine).expect("failed to run dot TODO(proper error msg)");
+
             elem(w, "div", attrs_to_iter(&attrs), |w| {
-                write!(
-                    w,
-                    "{}",
-                    dot_to_svg(&x.code, &x.engine)
-                        .expect("failed to run dot TODO(proper error msg)")
-                )
+                write!(w, "{}", svg_text)
             })?;
         }
         Line::Image(x) => {
@@ -288,9 +291,12 @@ fn write_table<W: Write>(
                 }
                 // TableItem::Separator => write_row(w, &empty_row, "td")?,
                 TableItem::Separator => elem(w, "tr", [], |w| {
-                    elem(w, "th", attrs_list_to_iter(&[("colspan", format!("{}", columns))]), |_| {
-                        Ok(())
-                    })
+                    elem(
+                        w,
+                        "th",
+                        attrs_list_to_iter(&[("colspan", format!("{}", columns))]),
+                        |_| Ok(()),
+                    )
                 })?,
             }
         }
