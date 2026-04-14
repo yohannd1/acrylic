@@ -65,11 +65,18 @@ summary:hover {
     background-color: var(--col-bg-alt);
 }
 
-.acr-inline-code, pre {
-    white-space: pre-wrap;
-    overflow-wrap: break-word;
-    word-wrap: break-word;
+.acr-inline-code, pre, code {
+    /* NOTE: !important is being used here because prism is messing this up, for some reason */
+    white-space: pre-wrap !important;
+    overflow-wrap: break-word !important;
+    word-wrap: break-word !important;
+    text-wrap-mode: wrap !important;
 
+    /* TODO: make this work... :( */
+    /* break-inside: avoid !important; */
+}
+
+.acr-inline-code, pre {
     font-family: var(--font-monospace);
     background: #f4f4f4;
     border: 1px solid #DDD;
