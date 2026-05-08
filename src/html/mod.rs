@@ -119,7 +119,7 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
         }
     }
 
-    let write_text_line = |w: &mut W, tag: &str, line: &TextLine, attrs: &AttrsMap<'_>| {
+    let write_text_line = |w: &mut W, tag: &str, line: &TextLine, attrs: &AttrsMap<'_>| -> io::Result<()> {
         elem(w, tag, attrs_to_iter(&attrs), |w| {
             if let Some(pfx) = &line.bullet {
                 match pfx {
@@ -150,11 +150,25 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
         Ok(())
     };
 
+    let mut has_written_children = false;
+    let mut try_write_children = |w: &mut W, node: &Node3| -> io::Result<()> {
+        if has_written_children {
+            return Ok(());
+        }
+        for child in &node.children {
+            write_node(w, child, indent + 1)?;
+        }
+        has_written_children = true;
+
+        Ok(())
+    };
+
     match &node.line {
         Line::Text(l) => {
             if l.content.iter().any(is_fold_tag) {
                 elem(w, "details", [], |w| {
-                    write_text_line(w, "summary", &l, &attrs)
+                    write_text_line(w, "summary", &l, &attrs)?;
+                    try_write_children(w, &node)
                 })?;
             } else {
                 write_text_line(w, "p", &l, &attrs)?;
@@ -211,9 +225,7 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
         writeln!(w, r#"<div class="acr-spacing"></div>"#)?;
     }
 
-    for child in &node.children {
-        write_node(w, child, indent + 1)?;
-    }
+    try_write_children(w, &node)?;
 
     Ok(())
 }
