@@ -65,6 +65,10 @@ summary:hover {
     background-color: var(--col-bg-alt);
 }
 
+pre {
+    margin: 0.2em 0em;
+}
+
 .acr-inline-code, pre, code {
     /* NOTE: !important is being used here because prism is messing this up, for some reason */
     white-space: pre-wrap !important;
