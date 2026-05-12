@@ -206,7 +206,10 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
                 .push_str(" text-align: center;");
 
             elem(w, "div", attrs_to_iter(&attrs), |w| {
-                let mut a_img = vec![("src", x.url.trim().to_owned())];
+                let mut a_img = vec![
+                    ("src", x.url.trim().to_owned()),
+                    ("style", "max-width: 100%".to_owned()),
+                ];
                 if let Some(c) = &x.caption {
                     a_img.push(("alt", c.clone()));
                 }
