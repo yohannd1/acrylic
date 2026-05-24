@@ -781,6 +781,14 @@ mod tests {
     }
 
     #[test]
+    fn math_bracket_escape() {
+        let res = parse_single_line(r#"${foo \{ bar}"#);
+        assert_terms!(&res, [InlineMath(_)]);
+        let InlineMath(ref inner) = res[0] else { panic!() };
+        assert_eq!(inner, r#"foo \{ bar"#);
+    }
+
+    #[test]
     fn symmetric_delims() {
         let prs = |x: &str, expected: &str| {
             let terms = parse_single_line(x);
