@@ -44,8 +44,13 @@ pub fn parse(document_str: &str) -> Result<DocumentSt1, String> {
     p.skip_newlines();
 
     let mut lines = Vec::new();
-    while let Some(line) = p.get_line(&options)? {
-        lines.push(line);
+    loop {
+        while let Some(()) = p.skip_comment_line(&options)? {}
+        if let Some(l) = p.get_line(&options)? {
+            lines.push(l);
+        } else {
+            break;
+        }
     }
 
     Ok(DocumentSt1 {
@@ -361,14 +366,10 @@ impl<'a> DocParser<'a> {
         })
     }
 
-    pub fn get_line(&mut self, options: &StandardOptions) -> Result<Option<Line>, String> {
-        if self.peek().is_none() {
-            return Ok(None);
-        }
-
+    pub fn read_indent(&mut self, mode: Indent) -> Result<usize, String> {
         let mut p = self.clone();
 
-        let indent = match options.indent {
+        let indent = match mode {
             Indent::Tab => p.count_while(|c| c == '\t'),
             Indent::Space(n) => {
                 let count = p.count_while(|c| c == ' ');
@@ -381,6 +382,39 @@ impl<'a> DocParser<'a> {
                 }
             }
         };
+
+        *self = p;
+        Ok(indent)
+    }
+
+    pub fn skip_comment_line(&mut self, options: &StandardOptions) -> Result<Option<()>, String> {
+        let mut p = self.clone();
+        let _indent = p.read_indent(options.indent)?;
+
+        for _ in 0..2 {
+            if p.expect_and_skip('%').is_none() {
+                return Ok(None);
+            }
+        }
+
+        loop {
+            match p.next() {
+                Some('\n') | None => break,
+                _ => {}
+            }
+        }
+
+        *self = p;
+        Ok(Some(()))
+    }
+
+    pub fn get_line(&mut self, options: &StandardOptions) -> Result<Option<Line>, String> {
+        if self.peek().is_none() {
+            return Ok(None);
+        }
+
+        let mut p = self.clone();
+        let indent = p.read_indent(options.indent)?;
 
         let mut terms = Vec::new();
 
@@ -633,7 +667,11 @@ impl<'a> DocParser<'a> {
                 '-' => TaskState::Cancelled,
                 _ => return None,
             };
-            if p.next()? == end { Some(state) } else { None }
+            if p.next()? == end {
+                Some(state)
+            } else {
+                None
+            }
         };
 
         let (format, state) = match p.next()? {
@@ -740,7 +778,11 @@ mod tests {
     fn parse_single_line(x: &str) -> Vec<Term> {
         let result = parse(x).unwrap();
         assert_eq!(result.lines.len(), 1);
-        return result.lines[0].terms.clone(); // FIXME: why can't I just move it out?
+        result.lines[0].terms.clone() // FIXME: why can't I just move it out?
+    }
+
+    fn parse_lines(x: &str) -> Vec<Line> {
+        parse(x).unwrap().lines
     }
 
     macro_rules! assert_terms {
@@ -784,7 +826,9 @@ mod tests {
     fn math_bracket_escape() {
         let res = parse_single_line(r#"${foo \{ bar}"#);
         assert_terms!(&res, [InlineMath(_)]);
-        let InlineMath(ref inner) = res[0] else { panic!() };
+        let InlineMath(ref inner) = res[0] else {
+            panic!()
+        };
         assert_eq!(inner, r#"foo \{ bar"#);
     }
 
@@ -793,7 +837,9 @@ mod tests {
         let prs = |x: &str, expected: &str| {
             let terms = parse_single_line(x);
             assert!(terms.len() == 1);
-            let InlineCode(ref x) = terms[0] else { panic!("failed to unwrap code") };
+            let InlineCode(ref x) = terms[0] else {
+                panic!("failed to unwrap code")
+            };
             assert_eq!(x, expected);
         };
 
@@ -817,29 +863,36 @@ mod tests {
         assert_terms!(&res, [FuncCall(_)]);
         let FuncCall(ref fc) = res[0] else { panic!() };
         assert_eq!(fc.name, "foo");
-        assert_eq!(fc.args, vec![
-            vec![Term::Word("bar".into())],
-            vec![Term::Word("baz".into())]
-        ]);
+        assert_eq!(
+            fc.args,
+            vec![
+                vec![Term::Word("bar".into())],
+                vec![Term::Word("baz".into())]
+            ]
+        );
 
         // Paren arg
         let res = parse_single_line("@foo(bar){baz}");
         assert_terms!(&res, [FuncCall(_)]);
         let FuncCall(ref fc) = res[0] else { panic!() };
         assert_eq!(fc.name, "foo");
-        assert_eq!(fc.args, vec![
-            vec![Term::Word("bar".into())],
-            vec![Term::Word("baz".into())]
-        ]);
+        assert_eq!(
+            fc.args,
+            vec![
+                vec![Term::Word("bar".into())],
+                vec![Term::Word("baz".into())]
+            ]
+        );
 
         // Raw arg
         let res = parse_single_line("@bar#{ idk man { ksdljakld } }#");
         assert_terms!(&res, [FuncCall(_)]);
         let FuncCall(ref fc) = res[0] else { panic!() };
         assert_eq!(fc.name, "bar");
-        assert_eq!(fc.args, vec![
-            vec![Term::Word(" idk man { ksdljakld } ".into())],
-        ]);
+        assert_eq!(
+            fc.args,
+            vec![vec![Term::Word(" idk man { ksdljakld } ".into())],]
+        );
     }
 
     fn should_parse(should: bool, string: &str) {
@@ -868,5 +921,18 @@ mod tests {
         should_parse(true, "${5 + 8}");
         should_parse(false, "${5 + 8");
         should_parse(false, "${{5 + 8}");
+    }
+
+    #[test]
+    fn skip_comment_lines() {
+        let s = concat!(
+            "Line one\n",
+            "%% Line two\n",
+            "%% Line three\n",
+            "Line four",
+        );
+
+        let lins = parse_lines(s);
+        assert_eq!(lins.len(), 2);
     }
 }
