@@ -895,6 +895,14 @@ mod tests {
         );
     }
 
+    #[test]
+    fn single_uninterrupted_word() {
+        // TODO: godammit! This should pass.
+        let res = parse_single_line("https://en.wikipedia.org/wiki/Prim%27s_algorithm");
+        assert_eq!(res.len(), 1);
+        assert_eq!(res[0], Term::Word("https://en.wikipedia.org/wiki/Prim%27s_algorithm".into()));
+    }
+
     fn should_parse(should: bool, string: &str) {
         if should {
             assert!(

@@ -45,12 +45,12 @@ Finished %-fold
     }##
   (x) Delete empty comment lines! That should be a kind of line into itself, I think. Like, completely ignored. Maybe parse that in advance.
 
-( ) Highlight fixme/todo stuff
+( ) Highlight fixme/todo stuff (don't really know how to do this well uh.....)
 
 ( ) Define a list of all builtin functions (kind of a standard)
 
 ( ) Think about keyword arguments
-  Since I'm going towards a lispy way anyway, I probabvly will just optionally parse an argument as a list of paired stringifiable words.
+  Since I'm going towards a lispy way anyway, I probably will just optionally parse an argument as a list of paired stringifiable words.
   So, for example: `@dot{engine @"fpl"}` would be valid
 
 ( ) Bug fix - folds eat up the spacing between them and the next element
