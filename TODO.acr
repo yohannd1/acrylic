@@ -43,8 +43,7 @@ Finished %-fold
     assert double(5) == 10
     }#
     }##
-
-( ) Delete empty comment lines! That should be a kind of line into itself, I think. Like, completely ignored. Maybe parse that in advance.
+  (x) Delete empty comment lines! That should be a kind of line into itself, I think. Like, completely ignored. Maybe parse that in advance.
 
 ( ) Highlight fixme/todo stuff
 
@@ -83,3 +82,5 @@ Finished %-fold
 ( ) Optional JS tools for the HTML backend (searching for tags, TODOs and incomplete tasks)
 
 ( ) Automated tests (one per parsing stage)
+
+( ) Support CRLF
