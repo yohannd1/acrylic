@@ -64,6 +64,7 @@ pub struct CodeBlockLine {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
     Space,
+    LineBreak,
     Word(String),
     Tag(String),
     Url(String),
@@ -463,6 +464,13 @@ fn process_terms(it: &mut impl Iterator<Item = Term2>) -> Result<Vec<Term>, Stri
                         }
                         n => return Err(format!("`@ref` call must have 1 or 2 args, got {n}")),
                     },
+                    "brk" => match fc.args.len() {
+                        1 => {
+                            // TODO: check that the arg is empty
+                            Term::LineBreak
+                        }
+                        n => return Err(format!("`@brk` call must have 1 (empty) arg, got {n}")),
+                    }
                     name @ ("code" | "dot" | "table" | "image") => {
                         return Err(format!(
                             "function {name:?} should be on the beginning of the line"

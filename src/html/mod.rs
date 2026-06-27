@@ -246,6 +246,7 @@ fn write_term<W: Write>(w: &mut W, term: &Term3) -> io::Result<()> {
 
     match term {
         Space => write!(w, " ")?,
+        LineBreak => elem(w, "br", [], |_| Ok(()))?,
         Word(x) => write!(w, "{x}")?,
         Tag(x) => elem(w, "span", [("class", "acr-tag")], |w| {
             text(w, "%")?;
