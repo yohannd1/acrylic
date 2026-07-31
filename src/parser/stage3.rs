@@ -99,7 +99,7 @@ fn process_node(n: Node2) -> Result<Node, String> {
     let mut it = n.contents.into_iter().peekable();
 
     fn check_empty_line(it: &mut impl Iterator<Item = Term2>) -> Result<(), String> {
-        while let Some(t) = it.next() {
+        for t in it {
             match t {
                 Term2::Space => {}
                 other => return Err(format!("term should be alone in line, got {:?}", other)),
@@ -273,8 +273,8 @@ fn process_code_block_line(fc: FuncCall) -> Result<Line, String> {
 fn process_dot_line(fc: FuncCall) -> Result<Line, String> {
     match fc.args.len() {
         1 => {
-            let code =
-                try_stringify(&fc.args[0]).ok_or_else(|| format!("failed to stringify arg 1"))?;
+            let code = try_stringify(&fc.args[0])
+                .ok_or_else(|| "failed to stringify arg 1".to_string())?;
             Ok(Line::DotGraph(DotGraphLine {
                 engine: "dot".into(),
                 code,
@@ -283,9 +283,9 @@ fn process_dot_line(fc: FuncCall) -> Result<Line, String> {
         2 => {
             let mut it = fc.args.into_iter();
             let engine = try_stringify(&it.next().unwrap())
-                .ok_or_else(|| format!("failed to stringify arg 1"))?;
+                .ok_or_else(|| "failed to stringify arg 1".to_string())?;
             let code = try_stringify(&it.next().unwrap())
-                .ok_or_else(|| format!("failed to stringify arg 2"))?;
+                .ok_or_else(|| "failed to stringify arg 2".to_string())?;
             Ok(Line::DotGraph(DotGraphLine { engine, code }))
         }
         n => Err(format!("`@dot` call expects 1 or 2 arguments, {n} given")),
@@ -295,16 +295,16 @@ fn process_dot_line(fc: FuncCall) -> Result<Line, String> {
 fn process_image_line(fc: FuncCall) -> Result<Line, String> {
     match fc.args.len() {
         1 => {
-            let url =
-                try_stringify(&fc.args[0]).ok_or_else(|| format!("failed to stringify arg 1"))?;
+            let url = try_stringify(&fc.args[0])
+                .ok_or_else(|| "failed to stringify arg 1".to_string())?;
             Ok(Line::Image(ImageLine { caption: None, url }))
         }
         2 => {
             let mut it = fc.args.into_iter();
             let caption = try_stringify(&it.next().unwrap())
-                .ok_or_else(|| format!("failed to stringify arg 1"))?;
+                .ok_or_else(|| "failed to stringify arg 1".to_string())?;
             let url = try_stringify(&it.next().unwrap())
-                .ok_or_else(|| format!("failed to stringify arg 2"))?;
+                .ok_or_else(|| "failed to stringify arg 2".to_string())?;
             Ok(Line::Image(ImageLine {
                 caption: Some(caption),
                 url,
@@ -408,7 +408,7 @@ fn process_terms(it: &mut impl Iterator<Item = Term2>) -> Result<Vec<Term>, Stri
 
     let mut word_acc = String::new();
     loop {
-        if word_acc.len() > 0 {
+        if !word_acc.is_empty() {
             match it.peek() {
                 Some(Term2::Word(x)) => {
                     word_acc.push_str(x);
@@ -444,21 +444,21 @@ fn process_terms(it: &mut impl Iterator<Item = Term2>) -> Result<Vec<Term>, Stri
                         } else {
                             Term::Code(
                                 try_stringify(&fc.args[0])
-                                    .ok_or_else(|| format!("failed to stringify argument"))?,
+                                    .ok_or_else(|| "failed to stringify argument".to_string())?,
                             )
                         }
                     }
                     "ref" => match fc.args.len() {
                         1 => {
                             let target = try_stringify(&fc.args[0])
-                                .ok_or_else(|| format!("failed to stringify argument"))?;
+                                .ok_or_else(|| "failed to stringify argument".to_string())?;
                             let content = vec![Term::Word(target.clone())];
                             Term::Ref { content, target }
                         }
                         2 => {
                             let mut it = fc.args.into_iter();
                             let target = try_stringify(&it.next().unwrap())
-                                .ok_or_else(|| format!("failed to stringify argument"))?;
+                                .ok_or_else(|| "failed to stringify argument".to_string())?;
                             let content = process_terms(&mut it.next().unwrap().into_iter())?;
                             Term::Ref { content, target }
                         }
@@ -470,7 +470,7 @@ fn process_terms(it: &mut impl Iterator<Item = Term2>) -> Result<Vec<Term>, Stri
                             Term::LineBreak
                         }
                         n => return Err(format!("`@brk` call must have 1 (empty) arg, got {n}")),
-                    }
+                    },
                     name @ ("code" | "dot" | "table" | "image") => {
                         return Err(format!(
                             "function {name:?} should be on the beginning of the line"
@@ -496,8 +496,7 @@ pub fn is_url(s: &str) -> bool {
     let mut it = s.chars().peekable();
 
     let mut pfx_cnt: usize = 0;
-    loop {
-        let Some(c) = it.peek() else { break; };
+    while let Some(c) = it.peek() {
         if !c.is_ascii_alphabetic() { break; }
         _ = it.next();
         pfx_cnt += 1;
@@ -510,8 +509,7 @@ pub fn is_url(s: &str) -> bool {
     let Some('/') = it.next() else { return false; };
     let Some('/') = it.next() else { return false; };
 
-    loop {
-        let Some(c) = it.peek() else { break; };
+    while let Some(c) = it.peek() {
         if is::inline_whitespace(*c) { return false; }
         _ = it.next();
     }

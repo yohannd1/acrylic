@@ -17,7 +17,7 @@ pub fn parse(document_str: &str) -> Result<DocumentSt1, String> {
         Some(other) => other
             .parse::<usize>()
             .map(Indent::Space)
-            .map_err(|_| format!("failed to parse indent"))?,
+            .map_err(|_| "failed to parse indent".to_string())?,
         None => Indent::Space(2),
     };
 
@@ -31,7 +31,7 @@ pub fn parse(document_str: &str) -> Result<DocumentSt1, String> {
     let tags = header
         .remove("tags")
         .map(|s| parse_tags(&s))
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_else(Vec::new);
 
     let title = header.remove("title").unwrap_or_else(String::new);
 
@@ -213,7 +213,7 @@ impl<'a> DocParser<'a> {
 
     fn count_while(&mut self, pred: impl Fn(char) -> bool) -> usize {
         let mut i = 0;
-        while let Some(_) = self.peek().filter(|&c| pred(c)) {
+        while self.peek().filter(|&c| pred(c)).is_some() {
             i += 1;
             self.step();
         }
@@ -268,7 +268,7 @@ impl<'a> DocParser<'a> {
         p.expect_and_skip(':')?;
 
         let key = p.collect(|c| !is::inline_whitespace(c));
-        if key.len() == 0 {
+        if key.is_empty() {
             return None;
         }
 
@@ -277,7 +277,7 @@ impl<'a> DocParser<'a> {
         }
 
         let value = p.collect(|c| c != '\n');
-        if value.len() == 0 {
+        if value.is_empty() {
             return None;
         }
 
@@ -331,7 +331,7 @@ impl<'a> DocParser<'a> {
         Ok(loop {
             if let Some(()) = self.get_inline_whitespace() {
                 break Some(Term::Space);
-            } else if let Some(_) = self.get_comment() {
+            } else if let Some(_x) = self.get_comment() {
                 // do nothing
             } else if let Some(x) = self.get_symmetric_delimiter('`')? {
                 break Some(Term::InlineCode(x));
@@ -373,13 +373,12 @@ impl<'a> DocParser<'a> {
             Indent::Tab => p.count_while(|c| c == '\t'),
             Indent::Space(n) => {
                 let count = p.count_while(|c| c == ' ');
-                if count % n != 0 {
+                if !count.is_multiple_of(n) {
                     return Err(format!(
-                        "bad indent: {count} spaces is not divisible by indent size {n}"
+                        "bad indent: {count} spaces is not a multiple of indent size {n}"
                     ));
-                } else {
-                    count / n
                 }
+                count / n
             }
         };
 
@@ -497,7 +496,7 @@ impl<'a> DocParser<'a> {
             }
         }
 
-        if ret.len() > 0 {
+        if !ret.is_empty() {
             *self = p;
             Some(ret)
         } else {
@@ -509,8 +508,8 @@ impl<'a> DocParser<'a> {
         let mut p = self.clone();
         let mut ret = String::new();
 
-        ret.extend(p.collect_at_least(1, |c| c.is_ascii_alphabetic())?.chars());
-        ret.extend(p.collect(|c| c.is_ascii_alphanumeric()).chars());
+        ret.push_str(&p.collect_at_least(1, |c| c.is_ascii_alphabetic())?);
+        ret.push_str(&p.collect(|c| c.is_ascii_alphanumeric()));
 
         *self = p;
         Some(ret)
@@ -606,7 +605,7 @@ impl<'a> DocParser<'a> {
             }
         }
 
-        if args.len() == 0 {
+        if args.is_empty() {
             return None;
         }
 
@@ -622,7 +621,7 @@ impl<'a> DocParser<'a> {
 
         let ret = p.collect(|c| c != '\n');
 
-        if ret.len() > 0 {
+        if !ret.is_empty() {
             *self = p;
             Some(ret)
         } else {
@@ -636,7 +635,7 @@ impl<'a> DocParser<'a> {
         p.expect_and_skip('%')?;
         let ret = p.collect(|c| !is::inline_whitespace(c) && c != '\n');
 
-        if ret.len() > 0 {
+        if !ret.is_empty() {
             *self = p;
             Some(ret)
         } else {
@@ -750,24 +749,18 @@ impl<'a> DocParser<'a> {
 /// Collection of methods for checking a character.
 pub mod is {
     pub fn escapable_char(c: char) -> bool {
-        match c {
-            '\\' | '@' | '$' | '%' | '*' | '_' | '`' => true,
-            _ => false,
-        }
+        matches!(c, '\\' | '@' | '$' | '%' | '*' | '_' | '`')
     }
 
     pub fn inline_whitespace(c: char) -> bool {
-        match c {
-            ' ' | '\t' => true,
-            _ => false,
-        }
+        matches!(c, ' ' | '\t')
     }
 
     pub fn word_char(c: char) -> bool {
-        match c {
-            '\n' | ' ' | '\t' | '*' | '`' | '$' | '%' | '(' | ')' | '{' | '}' => false,
-            _ => true,
-        }
+        !matches!(
+            c,
+            '\n' | ' ' | '\t' | '*' | '`' | '$' | '%' | '(' | ')' | '{' | '}'
+        )
     }
 }
 
@@ -899,21 +892,25 @@ mod tests {
     fn single_uninterrupted_word() {
         // TODO: godammit! This should pass.
         let res = parse_single_line("https://en.wikipedia.org/wiki/Prim%27s_algorithm");
-        assert_eq!(res.len(), 1);
-        assert_eq!(res[0], Term::Word("https://en.wikipedia.org/wiki/Prim%27s_algorithm".into()));
+        assert_eq!(
+            res,
+            &[Term::Word(
+                "https://en.wikipedia.org/wiki/Prim%27s_algorithm".into()
+            )]
+        );
     }
 
     fn should_parse(should: bool, string: &str) {
+        let res = parse(string);
+
         if should {
-            assert!(
-                parse(string).is_ok(),
-                "failed to parse when it should: {string:?}"
-            );
+            if let Err(m) = res {
+                panic!("failed to parse {string:?} when it should: {m}");
+            }
         } else {
-            assert!(
-                parse(string).is_err(),
-                "succesfully parsed when it shouldn't: {string:?}"
-            );
+            if res.is_ok() {
+                panic!("parsed {string:?} when it shouldn't");
+            }
         }
     }
 

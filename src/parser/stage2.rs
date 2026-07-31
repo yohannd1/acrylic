@@ -38,7 +38,7 @@ pub fn parse(doc: DocumentSt1) -> Result<DocumentSt2, String> {
             continue;
         }
 
-        if stack.len() == 0 {
+        if stack.is_empty() {
             if line.indent == 0 {
                 stack.push(line_to_node(line));
             } else {
@@ -83,6 +83,6 @@ pub fn parse(doc: DocumentSt1) -> Result<DocumentSt2, String> {
     Ok(DocumentSt2 {
         header: doc.header,
         options: doc.options,
-        nodes: nodes,
+        nodes,
     })
 }

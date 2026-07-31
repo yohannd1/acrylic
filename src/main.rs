@@ -43,7 +43,7 @@ fn main() {
     match app(&args) {
         Ok(()) => {}
         Err(e) => {
-            if e.len() > 0 {
+            if !e.is_empty() {
                 eprintln!("error: {}", e);
             }
             std::process::exit(1);
@@ -77,7 +77,7 @@ fn app(args: &[String]) -> Result<(), String> {
                 .map_err(|e| format!("failed to write to file: {:?}", e))?;
         }
         Backend::Debug => {
-            write!(&mut file, "{result:#?}\n")
+            writeln!(&mut file, "{result:#?}")
                 .map_err(|e| format!("failed to write to file: {:?}", e))?;
         }
         Backend::None => {}
@@ -126,14 +126,14 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
     let katex_path = p
         .get_option("--katex-path")
         .and_then(|x| x.value.clone())
-        .unwrap_or_else(String::new);
+        .unwrap_or_default();
 
     let in_file_gen: ReadFileGen = match p.get_arg("FILE").and_then(|x| x.value.as_deref()).unwrap()
     {
         "-" => Box::new(|| Ok(Box::new(io::stdin()))),
         path_ref => {
             let path = path_ref.to_owned();
-            Box::new(move || File::open(path).and_then(|x| Ok(Box::new(x) as Box<dyn Read>)))
+            Box::new(move || File::open(path).map(|x| Box::new(x) as Box<dyn Read>))
         }
     };
 
@@ -142,7 +142,7 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
         Some("-") | None => Box::new(|| Ok(Box::new(io::stdout()))),
         Some(path_ref) => {
             let path = path_ref.to_owned();
-            Box::new(move || File::create(path).and_then(|x| Ok(Box::new(x) as Box<dyn Write>)))
+            Box::new(move || File::create(path).map(|x| Box::new(x) as Box<dyn Write>))
         }
     };
 

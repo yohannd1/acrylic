@@ -21,14 +21,14 @@ pub struct HtmlOptions<'a> {
 
 type AttrsMap<'a> = HashMap<&'a str, String>;
 
-const HEADER_METATAGS: &'static str = concat!(
+const HEADER_METATAGS: &str = concat!(
     r#"<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>"#,
     r#"<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>"#,
     r#"<meta name="HandheldFriendly" content="true"/>"#,
     r#"<meta charset="UTF-8"/>"#,
 );
-const DEFAULT_STYLE: &'static str = include_str!("style.css");
-const INIT_JS: &'static str = include_str!("script.js");
+const DEFAULT_STYLE: &str = include_str!("style.css");
+const INIT_JS: &str = include_str!("script.js");
 const SPACE_PER_INDENT_EM: f32 = 1.25;
 
 /// Write a HTML representation of `doc` into `w`.
@@ -57,7 +57,7 @@ pub fn write_html<W: Write>(
         Ok(())
     };
 
-    write!(w, "<!DOCTYPE html>\n")?;
+    writeln!(w, "<!DOCTYPE html>")?;
     elem(w, "html", [], |w| {
         elem(w, "head", [], write_head)?;
         elem(w, "body", [], |w| elem(w, "main", [], write_article))
@@ -69,7 +69,7 @@ fn do_nothing<T>(_: &mut T) -> io::Result<()> {
 }
 
 fn write_katex_header<W: Write>(w: &mut W, katex_path: &str) -> io::Result<()> {
-    let prefix = if katex_path.len() > 0 && !katex_path.ends_with("/") {
+    let prefix = if !katex_path.is_empty() && !katex_path.ends_with("/") {
         format!("{katex_path}/")
     } else {
         katex_path.to_owned()
@@ -89,7 +89,7 @@ fn write_katex_header<W: Write>(w: &mut W, katex_path: &str) -> io::Result<()> {
     write_js_link(w, &format!("{prefix}katex.min.js"))?;
     write_css_link(w, &format!("{prefix}prism.css"))?;
     write_js_link(w, &format!("{prefix}prism.js"))?;
-    write!(w, "\n<script>{}</script>\n", INIT_JS)?;
+    writeln!(w, "\n<script>{}</script>", INIT_JS)?;
 
     Ok(())
 }
@@ -120,7 +120,7 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
     }
 
     let write_text_line = |w: &mut W, tag: &str, line: &TextLine, attrs: &AttrsMap<'_>| -> io::Result<()> {
-        elem(w, tag, attrs_to_iter(&attrs), |w| {
+        elem(w, tag, attrs_to_iter(attrs), |w| {
             if let Some(pfx) = &line.bullet {
                 match pfx {
                     BulletType::Dash => text(w, "-")?,
@@ -145,7 +145,7 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
             }
             Ok(())
         })?;
-        write!(w, "\n")?;
+        writeln!(w)?;
 
         Ok(())
     };
@@ -167,11 +167,11 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
         Line::Text(l) => {
             if l.content.iter().any(is_fold_tag) {
                 elem(w, "details", [], |w| {
-                    write_text_line(w, "summary", &l, &attrs)?;
-                    try_write_children(w, &node)
+                    write_text_line(w, "summary", l, &attrs)?;
+                    try_write_children(w, node)
                 })?;
             } else {
-                write_text_line(w, "p", &l, &attrs)?;
+                write_text_line(w, "p", l, &attrs)?;
             }
         }
         Line::Table(l) => {
@@ -189,7 +189,7 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
         }
         Line::DisplayMath(x) => {
             attrs.insert("class", "katex-display".into());
-            elem(w, "p", attrs_to_iter(&attrs), |w| text(w, &x))?;
+            elem(w, "p", attrs_to_iter(&attrs), |w| text(w, x))?;
         }
         Line::DotGraph(x) => {
             let svg_text =
@@ -202,7 +202,7 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
         Line::Image(x) => {
             attrs
                 .entry("style")
-                .or_insert_with(|| String::new())
+                .or_default()
                 .push_str(" text-align: center;");
 
             elem(w, "div", attrs_to_iter(&attrs), |w| {
@@ -216,7 +216,7 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
 
                 elem(w, "img", attrs_list_to_iter(&a_img), |_| Ok(()))?;
                 if let Some(c) = &x.caption {
-                    elem(w, "p", attrs_list_to_iter(&[]), |w| text(w, &c))?;
+                    elem(w, "p", attrs_list_to_iter(&[]), |w| text(w, c))?;
                 }
 
                 Ok(())
@@ -228,7 +228,7 @@ pub fn write_node<W: Write>(w: &mut W, node: &Node3, indent: usize) -> io::Resul
         writeln!(w, r#"<div class="acr-spacing"></div>"#)?;
     }
 
-    try_write_children(w, &node)?;
+    try_write_children(w, node)?;
 
     Ok(())
 }
@@ -302,7 +302,7 @@ fn write_table<W: Write>(
             match item {
                 TableItem::Row(row) => {
                     let cell_tag = if is_first_row { "th" } else { "td" };
-                    write_row(w, &row, cell_tag)?;
+                    write_row(w, row, cell_tag)?;
                     is_first_row = false;
                 }
                 // TableItem::Separator => write_row(w, &empty_row, "td")?,
@@ -323,7 +323,7 @@ fn write_table<W: Write>(
 
 fn dot_to_svg(input: &str, engine: &str) -> Result<String, String> {
     let mut child = Command::new("dot")
-        .args(&["-K", engine, "-T", "svg_inline"])
+        .args(["-K", engine, "-T", "svg_inline"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

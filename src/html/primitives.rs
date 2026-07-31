@@ -54,21 +54,21 @@ pub fn text(w: &mut impl io::Write, text: &str) -> io::Result<()> {
 fn is_void_tag(tag: &str) -> bool {
     // FIXME: improve performance here (hash table or something ig)
 
-    match tag {
-        "area" => true,
-        "base" => true,
-        "br" => true,
-        "col" => true,
-        "embed" => true,
-        "hr" => true,
-        "img" => true,
-        "input" => true,
-        "link" => true,
-        "meta" => true,
-        "param" => true,
-        "source" => true,
-        "track" => true,
-        "wbr" => true,
-        _ => false,
-    }
+    matches!(
+        tag,
+        "area"
+            | "base"
+            | "br"
+            | "col"
+            | "embed"
+            | "hr"
+            | "img"
+            | "input"
+            | "link"
+            | "meta"
+            | "param"
+            | "source"
+            | "track"
+            | "wbr"
+    )
 }

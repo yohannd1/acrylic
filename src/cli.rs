@@ -127,7 +127,7 @@ impl<'a> CliParser<'a> {
                 } else {
                     let cur_arg = match self.args.get_mut(arg_i) {
                         Some(x) => x,
-                        None => return Err(self.error_help(format!("too many arguments"))),
+                        None => return Err(self.error_help("too many arguments".into())),
                     };
                     cur_arg.value = Some(arg.to_owned());
                     arg_i += 1;
@@ -141,7 +141,7 @@ impl<'a> CliParser<'a> {
         }
 
         if arg_i != self.args.len() {
-            return Err(self.error_help(format!("too few arguments")));
+            return Err(self.error_help("too few arguments".into()));
         }
 
         Ok(())
@@ -149,7 +149,7 @@ impl<'a> CliParser<'a> {
 
     pub fn error_help(&self, error: String) -> String {
         self.help();
-        return error;
+        error
     }
 
     pub fn help(&self) {
@@ -172,8 +172,7 @@ impl<'a> CliParser<'a> {
 }
 
 fn get_progname(arg0: &str) -> Option<&str> {
-    Some(arg0)
-        .map(Path::new)
+    Some(Path::new(arg0))
         .and_then(Path::file_name)
         .and_then(|x| x.try_into().ok())
 }
