@@ -129,9 +129,11 @@ svg {
     padding-left: 0em;
 }
 
+/*
+ * XXX: this used to be the way to make things readable. I don't think it's needed anymore?
 @media (prefers-color-scheme: dark) {
-    /* TODO: this is not the right way, but it works for now */
     svg g {
         fill: #FFF;
     }
 }
+*/
